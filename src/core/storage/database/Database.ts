@@ -2,6 +2,10 @@ import * as SQLite from 'expo-sqlite';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
+export const resetDatabaseConnection = () => {
+  _db = null;
+};
+
 export const openDatabase = (): SQLite.SQLiteDatabase => {
   if (!_db) {
     _db = SQLite.openDatabaseSync('scaleguard.db');
@@ -9,13 +13,10 @@ export const openDatabase = (): SQLite.SQLiteDatabase => {
   return _db;
 };
 
-export const initDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
-  const db = openDatabase();
-  
-  try {
-    // We use WAL mode for better concurrency and performance
-    await db.execAsync(`
-      PRAGMA journal_mode = WAL;
+const runInitMigrations = async (db: SQLite.SQLiteDatabase): Promise<void> => {
+  // We use WAL mode for better concurrency and performance
+  await db.execAsync(`
+    PRAGMA journal_mode = WAL;
       
       CREATE TABLE IF NOT EXISTS inspections (
         id TEXT PRIMARY KEY NOT NULL,
@@ -134,11 +135,26 @@ export const initDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
     } catch (e) {
       // Ignore if already exists
     }
+};
 
+export const initDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
+  try {
+    const db = openDatabase();
+    await runInitMigrations(db);
     console.log('Database initialized successfully');
     return db;
-  } catch (error) {
+  } catch (error: any) {
+    const errStr = String(error?.message || error);
+    if (errStr.includes('NullPointerException') || errStr.includes('prepareAsync') || errStr.includes('rejected')) {
+      console.warn('Recovering database connection after native reload error...');
+      resetDatabaseConnection();
+      const freshDb = openDatabase();
+      await runInitMigrations(freshDb);
+      console.log('Database initialized successfully after recovery');
+      return freshDb;
+    }
     console.error('Error initializing database:', error);
     throw error;
   }
 };
+

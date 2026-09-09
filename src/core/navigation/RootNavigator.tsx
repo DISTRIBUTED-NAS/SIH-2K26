@@ -24,12 +24,18 @@ export const RootNavigator = () => {
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
+    let isMounted = true;
     const initAuth = async () => {
       await restoreSession();
-      setIsInitializing(false);
+      if (isMounted) {
+        setIsInitializing(false);
+      }
     };
     initAuth();
-  }, [restoreSession]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // ── Notification tap handler ─────────────────────────────────────────────
   useEffect(() => {

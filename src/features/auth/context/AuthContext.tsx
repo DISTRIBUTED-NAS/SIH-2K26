@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { AuthUser, LoginCredentials } from '../models/AuthModels';
 import { authService } from '../services/authService';
 import { LocalStorage } from '../../../core/storage/localStorage';
@@ -21,6 +21,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      setToken(null);
+      setUser(null);
+      await LocalStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      await LocalStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Configure Axios interceptor for tokens and global 401 handling
   useEffect(() => {
@@ -45,9 +57,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       apiClient.interceptors.request.eject(requestInterceptor);
       apiClient.interceptors.response.eject(responseInterceptor);
     };
-  }, [token]);
+  }, [token, logout]);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
       const response = await authService.login(credentials);
@@ -65,21 +77,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const logout = async () => {
-    setIsLoading(true);
-    try {
-      setToken(null);
-      setUser(null);
-      await LocalStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-      await LocalStorage.removeItem(STORAGE_KEYS.AUTH_USER);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const restoreSession = async (): Promise<boolean> => {
+  const restoreSession = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     try {
       const storedToken = await LocalStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
@@ -107,24 +107,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logout]);
+
+  const contextValue = useMemo(() => ({
+    user,
+    token,
+    isAuthenticated: !!token && !!user,
+    isLoading,
+    login,
+    logout,
+    restoreSession,
+  }), [user, token, isLoading, login, logout, restoreSession]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!token && !!user,
-        isLoading,
-        login,
-        logout,
-        restoreSession,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
