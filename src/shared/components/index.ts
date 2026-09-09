@@ -6,3 +6,4 @@ export * from './ScreenWrapper';
 export * from './AppTextField';
 export * from './InspectionCard';
 export * from './SummaryCard';
+export * from './StepProgressIndicator';

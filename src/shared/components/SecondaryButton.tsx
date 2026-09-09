@@ -1,50 +1,58 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, StyleProp, TextStyle } from 'react-native';
 import { colors, typography, spacing } from '../../core/theme';
 
 interface SecondaryButtonProps {
   title: string;
   onPress: () => void;
-  isLoading?: boolean;
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export const SecondaryButton: React.FC<SecondaryButtonProps> = ({ 
-  title, onPress, isLoading = false, disabled = false 
+  title, 
+  onPress, 
+  disabled = false,
+  style,
+  textStyle,
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.button, (disabled || isLoading) && styles.disabled]}
+      style={[
+        styles.button,
+        disabled && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
-      disabled={disabled || isLoading}
+      disabled={disabled}
+      activeOpacity={0.75}
     >
-      {isLoading ? (
-        <ActivityIndicator color={colors.primary} />
-      ) : (
-        <Text style={styles.text}>{title}</Text>
-      )}
+      <Text style={[styles.text, textStyle]}>{title}</Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: 'transparent',
-    borderColor: colors.primary,
-    borderWidth: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    minHeight: 46,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    borderColor: colors.border,
   },
   text: {
-    ...typography.bodyLarge,
-    fontWeight: 'bold',
+    ...typography.bodyMedium,
+    fontWeight: '700',
     color: colors.primary,
+    letterSpacing: 0.2,
   },
 });

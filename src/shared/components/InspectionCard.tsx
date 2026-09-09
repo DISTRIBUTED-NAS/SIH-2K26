@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AppCard } from './AppCard';
 import { StatusBadge } from './StatusBadge';
-import { SecondaryButton } from './SecondaryButton';
 import { typography, colors, spacing } from '../../core/theme';
 import { InspectionSummary } from '../../features/inspections/models/InspectionModels';
 
@@ -14,56 +13,153 @@ interface InspectionCardProps {
 export const InspectionCard: React.FC<InspectionCardProps> = ({ inspection, onViewDetails }) => {
   return (
     <AppCard style={styles.card}>
+      {/* Top row: Case ID & Status Badge */}
       <View style={styles.headerRow}>
-        <Text style={styles.time}>{inspection.scheduledTime}</Text>
-        <StatusBadge status={inspection.status} />
+        <View style={styles.caseIdBadge}>
+          <Text style={styles.caseIdText}>CASE #{inspection.applicationId}</Text>
+        </View>
+        <StatusBadge status={inspection.status} size="small" />
       </View>
       
-      <Text style={styles.applicationId}>Application #{inspection.applicationId}</Text>
-      <Text style={styles.instrumentName}>{inspection.instrumentName}</Text>
-      <Text style={styles.location}>📍 {inspection.location}</Text>
+      {/* Business Name */}
+      <Text style={styles.businessName} numberOfLines={1}>
+        {inspection.businessName || 'Business Verification'}
+      </Text>
       
-      <View style={styles.footerRow}>
-        <SecondaryButton 
-          title="View Details" 
-          onPress={() => onViewDetails(inspection.id)} 
-        />
+      {/* Instrument Spec Badge */}
+      <View style={styles.instrumentRow}>
+        <View style={styles.instrumentPill}>
+          <Text style={styles.instrumentPillText}>⚖️  {inspection.instrumentName}</Text>
+        </View>
+        {inspection.instrumentModel ? (
+          <Text style={styles.modelText} numberOfLines={1}>
+            Mod: {inspection.instrumentModel}
+          </Text>
+        ) : null}
       </View>
+
+      {/* Meta Row: Time & Location */}
+      <View style={styles.metaContainer}>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaIcon}>🕒</Text>
+          <Text style={styles.metaText}>
+            {inspection.scheduledDate ? `${inspection.scheduledDate} • ` : ''}{inspection.scheduledTime}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaIcon}>📍</Text>
+          <Text style={styles.metaText} numberOfLines={1}>{inspection.location}</Text>
+        </View>
+      </View>
+      
+      {/* Bottom Action */}
+      <TouchableOpacity 
+        style={styles.actionButton} 
+        onPress={() => onViewDetails(inspection.id)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.actionText}>Inspect Application</Text>
+        <Text style={styles.actionArrow}>→</Text>
+      </TouchableOpacity>
     </AppCard>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
+    padding: spacing.md,
     marginBottom: spacing.md,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
-  time: {
-    ...typography.h2,
+  caseIdBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C7D9ED',
+  },
+  caseIdText: {
+    ...typography.badge,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  businessName: {
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.text.primary,
+    letterSpacing: -0.2,
+    marginBottom: 8,
   },
-  applicationId: {
-    ...typography.bodyMedium,
+  instrumentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  instrumentPill: {
+    backgroundColor: colors.surfaceVariant,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  instrumentPillText: {
+    ...typography.bodySmall,
     color: colors.text.secondary,
-    marginBottom: spacing.xs,
+    fontWeight: '600',
   },
-  instrumentName: {
-    ...typography.bodyLarge,
-    color: colors.text.primary,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
+  modelText: {
+    ...typography.bodySmall,
+    color: colors.text.muted,
+    flex: 1,
   },
-  location: {
-    ...typography.bodyMedium,
+  metaContainer: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    marginBottom: 12,
+    gap: 4,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaIcon: {
+    fontSize: 12,
+    marginRight: 6,
+  },
+  metaText: {
+    ...typography.bodySmall,
     color: colors.text.secondary,
-    marginBottom: spacing.md,
+    flex: 1,
   },
-  footerRow: {
-    marginTop: spacing.sm,
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C7D9ED',
+  },
+  actionText: {
+    ...typography.bodyMedium,
+    color: colors.primary,
+    fontWeight: '700',
+    marginRight: 6,
+  },
+  actionArrow: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '700',
   },
 });

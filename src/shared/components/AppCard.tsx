@@ -5,11 +5,17 @@ import { colors, spacing } from '../../core/theme';
 interface AppCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  variant?: 'elevated' | 'outlined' | 'tonal';
 }
 
-export const AppCard: React.FC<AppCardProps> = ({ children, style }) => {
+export const AppCard: React.FC<AppCardProps> = ({ children, style, variant = 'elevated' }) => {
   return (
-    <View style={[styles.card, style]}>
+    <View style={[
+      styles.card,
+      variant === 'outlined' && styles.outlined,
+      variant === 'tonal' && styles.tonal,
+      style
+    ]}>
       {children}
     </View>
   );
@@ -18,18 +24,26 @@ export const AppCard: React.FC<AppCardProps> = ({ children, style }) => {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: spacing.md,
     marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 3,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  outlined: {
+    elevation: 0,
+    shadowOpacity: 0,
+    borderColor: colors.border,
+  },
+  tonal: {
+    backgroundColor: colors.surfaceVariant,
+    borderColor: colors.borderLight,
+    elevation: 0,
+    shadowOpacity: 0,
   },
 });

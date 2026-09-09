@@ -1,27 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TextInputProps } from 'react-native';
 import { colors, typography, spacing } from '../../core/theme';
 
 interface AppTextFieldProps extends TextInputProps {
   label: string;
   error?: string;
+  helperText?: string;
 }
 
 export const AppTextField: React.FC<AppTextFieldProps> = ({
   label,
   error,
+  helperText,
   style,
+  onFocus,
+  onBlur,
   ...rest
 }) => {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, isFocused && styles.labelFocused, !!error && styles.labelError]}>
+        {label}
+      </Text>
       <TextInput
-        style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor={colors.text.secondary}
+        style={[
+          styles.input,
+          isFocused && styles.inputFocused,
+          !!error && styles.inputError,
+          style,
+        ]}
+        placeholderTextColor={colors.text.muted}
+        onFocus={(e) => {
+          setIsFocused(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setIsFocused(false);
+          onBlur?.(e);
+        }}
         {...rest}
       />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : helperText ? (
+        <Text style={styles.helperText}>{helperText}</Text>
+      ) : null}
     </View>
   );
 };
@@ -31,28 +56,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-    fontWeight: 'bold',
+    ...typography.caption,
+    textTransform: 'uppercase',
+    color: colors.text.secondary,
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  labelFocused: {
+    color: colors.primary,
+  },
+  labelError: {
+    color: colors.status.error,
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 3,
     ...typography.bodyLarge,
     color: colors.text.primary,
     backgroundColor: colors.surface,
-    minHeight: 48,
+    minHeight: 50,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
   inputError: {
     borderColor: colors.status.error,
+    backgroundColor: '#FFF8F8',
   },
   errorText: {
     ...typography.bodySmall,
     color: colors.status.error,
-    marginTop: spacing.xs,
+    marginTop: 4,
+  },
+  helperText: {
+    ...typography.bodySmall,
+    color: colors.text.muted,
+    marginTop: 4,
   },
 });

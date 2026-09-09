@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../core/navigation/types';
 import { colors, typography, spacing } from '../../core/theme';
-import { ScreenWrapper, AppCard, PrimaryButton, SecondaryButton, AppTextField } from '../../shared/components';
+import { 
+  ScreenWrapper, 
+  AppCard, 
+  PrimaryButton, 
+  SecondaryButton, 
+  AppTextField,
+  StepProgressIndicator 
+} from '../../shared/components';
 import { 
   getDefaultChecklist, 
   InspectionChecklistItem, 
-  ChecklistStatus
+  ChecklistStatus 
 } from './models/InspectionFormModels';
 import { repository } from '../../core/storage/database/InspectionLocalRepository';
 
@@ -24,12 +31,9 @@ export const InspectionChecklistScreen = () => {
   const [observations, setObservations] = useState('');
   const [remarks, setRemarks] = useState('');
   const [showErrors, setShowErrors] = useState(false);
-  
-  // Track photoUri, initialized from DB later
   const [photoUri, setPhotoUri] = useState<string | undefined>();
 
-  // Load data from DB on mount
-  React.useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
     const load = async () => {
       const data = await repository.getInspection(inspectionId);
@@ -42,20 +46,6 @@ export const InspectionChecklistScreen = () => {
     };
     load();
     return () => { isMounted = false; };
-  }, [inspectionId]);
-
-  // When returning from Camera, the repository photo might be updated
-  // Actually, wait, the camera might set params. Let's still listen to params or reload from DB.
-  React.useEffect(() => {
-    let isMounted = true;
-    const load = async () => {
-      const data = await repository.getInspection(inspectionId);
-      if (isMounted && data?.photoUri) {
-        setPhotoUri(data.photoUri);
-      }
-    };
-    // Re-fetch when focusing screen (if using useFocusEffect) or simply rely on state.
-    // For now, let's keep it simple. We'll poll or reload here if needed, but saving onChange covers most.
   }, [inspectionId]);
 
   const handleStatusChange = async (id: string, status: ChecklistStatus) => {
@@ -79,205 +69,398 @@ export const InspectionChecklistScreen = () => {
     if (hasUnchecked || !photoUri) {
       setShowErrors(true);
       if (!photoUri) {
-        Alert.alert('Incomplete', 'Please capture an inspection photo before proceeding.');
+        Alert.alert('Evidence Required', 'Please capture official photo evidence of the weighing instrument before proceeding.');
       } else {
-        Alert.alert('Incomplete', 'Please verify all checklist items before proceeding.');
+        Alert.alert('Verification Incomplete', 'Please assess all statutory checklist items (Pass or Fail) before proceeding.');
       }
       return;
     }
 
-    // Ensure final save
     await repository.updateChecklist(inspectionId, checklist);
     await repository.updateObservations(inspectionId, observations, remarks);
 
     navigation.navigate('InspectionMeasurements', { inspectionId });
   };
 
+  const passedCount = checklist.filter(c => c.status === 'PASS').length;
+  const totalCount = checklist.length;
+
   const renderChecklistToggle = (item: InspectionChecklistItem) => {
     const isError = showErrors && item.status === 'NOT_CHECKED';
 
     return (
-      <View key={item.id} style={styles.checklistItem}>
-        <Text style={[styles.checklistLabel, isError && styles.errorText]}>{item.label}</Text>
+      <View key={item.id} style={[styles.checklistItem, isError && styles.checklistItemError]}>
+        <View style={styles.itemHeader}>
+          <Text style={styles.checklistLabel}>{item.label}</Text>
+          {item.status === 'PASS' && (
+            <View style={styles.statusPillPass}>
+              <Text style={styles.statusPillTextPass}>VERIFIED</Text>
+            </View>
+          )}
+          {item.status === 'FAIL' && (
+            <View style={styles.statusPillFail}>
+              <Text style={styles.statusPillTextFail}>NON-COMPLIANT</Text>
+            </View>
+          )}
+        </View>
         
         <View style={styles.toggleRow}>
           <TouchableOpacity 
-            style={[styles.toggleButton, item.status === 'PASS' && styles.passActive]}
+            style={[
+              styles.toggleButton, 
+              item.status === 'PASS' && styles.passActive
+            ]}
             onPress={() => handleStatusChange(item.id, 'PASS')}
-            accessibilityLabel={`${item.label} Pass`}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.toggleText, item.status === 'PASS' && styles.activeText]}>Pass</Text>
+            <Text style={[styles.toggleIcon, item.status === 'PASS' && styles.activeIcon]}>✓</Text>
+            <Text style={[styles.toggleText, item.status === 'PASS' && styles.activeText]}>Pass / Compliant</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.toggleButton, item.status === 'FAIL' && styles.failActive]}
+            style={[
+              styles.toggleButton, 
+              item.status === 'FAIL' && styles.failActive
+            ]}
             onPress={() => handleStatusChange(item.id, 'FAIL')}
-            accessibilityLabel={`${item.label} Fail`}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.toggleText, item.status === 'FAIL' && styles.activeText]}>Fail</Text>
+            <Text style={[styles.toggleIcon, item.status === 'FAIL' && styles.activeIcon]}>✕</Text>
+            <Text style={[styles.toggleText, item.status === 'FAIL' && styles.activeText]}>Defect / Fail</Text>
           </TouchableOpacity>
         </View>
-        {isError && <Text style={styles.errorHint}>This item is required</Text>}
+
+        {isError && (
+          <Text style={styles.errorHint}>⚠ Assessment required under Legal Metrology Rules</Text>
+        )}
       </View>
     );
   };
 
   return (
     <ScreenWrapper>
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.title}>Inspection Checklist</Text>
-        <Text style={styles.subtitle}>Application: {inspectionId}</Text>
-        
-        <AppCard style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Verification Items</Text>
-          {checklist.map(renderChecklistToggle)}
-        </AppCard>
+      <View style={styles.outerContainer}>
+        {/* Step Progress */}
+        <StepProgressIndicator currentStep="CHECKLIST" />
 
-        <AppCard style={[styles.sectionCard, showErrors && !photoUri && styles.errorCard]}>
-          <Text style={styles.sectionTitle}>Photo Evidence</Text>
-          {photoUri ? (
-            <View>
-              <Text style={styles.successText}>✓ Inspection photo captured</Text>
-              <View style={styles.photoActions}>
-                <SecondaryButton 
-                  title="Retake Photo" 
+        <ScrollView 
+          style={styles.container} 
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Section Summary Banner */}
+          <View style={styles.summaryBanner}>
+            <View style={styles.summaryTextGroup}>
+              <Text style={styles.summaryTitle}>Statutory Verification Checklist</Text>
+              <Text style={styles.summarySub}>Application #{inspectionId}</Text>
+            </View>
+            <View style={styles.counterBadge}>
+              <Text style={styles.counterBadgeText}>{passedCount}/{totalCount} PASS</Text>
+            </View>
+          </View>
+          
+          {/* Checklist Card */}
+          <AppCard style={styles.sectionCard}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.sectionTitle}>PHYSICAL & LEGAL PARAMETERS</Text>
+              <Text style={styles.sectionBadge}>Mandatory</Text>
+            </View>
+            {checklist.map(renderChecklistToggle)}
+          </AppCard>
+
+          {/* Photo Evidence Card */}
+          <AppCard style={[styles.sectionCard, showErrors && !photoUri && styles.errorCard]}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.sectionTitle}>PHOTO EVIDENCE COLLECTION</Text>
+              <Text style={styles.sectionBadge}>Photo Tag</Text>
+            </View>
+            {photoUri ? (
+              <View style={styles.photoContainer}>
+                <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                <View style={styles.photoDetails}>
+                  <View style={styles.photoVerifiedBadge}>
+                    <Text style={styles.photoVerifiedText}>✓ Photo Captured & Stored</Text>
+                  </View>
+                  <SecondaryButton 
+                    title="Retake Inspection Photo" 
+                    onPress={() => navigation.navigate('Camera', { inspectionId })} 
+                    style={styles.retakeBtn}
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.noPhotoContainer}>
+                <Text style={styles.noPhotoDesc}>
+                  Capture high-resolution photographic evidence of the weighing instrument scale, stamping plate, and serial stamp.
+                </Text>
+                <PrimaryButton 
+                  title="📷  Launch Field Camera" 
                   onPress={() => navigation.navigate('Camera', { inspectionId })} 
                 />
+                {showErrors && <Text style={styles.errorHint}>⚠ Photographic evidence is legally mandatory</Text>}
               </View>
-            </View>
-          ) : (
-            <View>
-              <Text style={styles.checklistLabel}>A clear photograph of the instrument is required.</Text>
-              <PrimaryButton 
-                title="Capture Photo" 
-                onPress={() => navigation.navigate('Camera', { inspectionId })} 
-              />
-              {showErrors && <Text style={styles.errorHint}>Photo evidence is required</Text>}
-            </View>
-          )}
-        </AppCard>
+            )}
+          </AppCard>
 
-        <AppCard style={styles.sectionCard}>
-          <AppTextField
-            label="Officer Observations"
-            placeholder="Enter observations..."
-            value={observations}
-            onChangeText={handleObservationsChange}
-            multiline
-            numberOfLines={4}
+          {/* Observations & Remarks */}
+          <AppCard style={styles.sectionCard}>
+            <AppTextField
+              label="Official Field Observations"
+              placeholder="Record instrument condition, seal status, leveling..."
+              value={observations}
+              onChangeText={handleObservationsChange}
+              multiline
+              numberOfLines={3}
+            />
+          </AppCard>
+
+          <AppCard style={styles.sectionCard}>
+            <AppTextField
+              label="Additional Remarks (Optional)"
+              placeholder="Any special remarks or compliance notes for the trader..."
+              value={remarks}
+              onChangeText={handleRemarksChange}
+              multiline
+              numberOfLines={2}
+            />
+          </AppCard>
+        </ScrollView>
+
+        {/* Sticky Action Footer */}
+        <View style={styles.stickyFooter}>
+          <PrimaryButton 
+            title="Proceed to Measurement Readings →" 
+            onPress={handleContinue} 
           />
-        </AppCard>
-
-        <AppCard style={styles.sectionCard}>
-          <AppTextField
-            label="Additional Remarks (Optional)"
-            placeholder="Enter remarks..."
-            value={remarks}
-            onChangeText={handleRemarksChange}
-            multiline
-            numberOfLines={3}
-          />
-        </AppCard>
-
-        <View style={styles.footer}>
-          <PrimaryButton title="Continue to Measurements" onPress={handleContinue} />
         </View>
-      </ScrollView>
+      </View>
     </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
+    padding: spacing.md,
+    paddingBottom: 24,
   },
-  title: {
-    ...typography.h1,
-    color: colors.primary,
-    marginBottom: spacing.xs,
+  summaryBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  subtitle: {
-    ...typography.bodyMedium,
+  summaryTextGroup: {
+    flex: 1,
+  },
+  summaryTitle: {
+    ...typography.h2,
+    fontSize: 16,
+    color: colors.text.primary,
+    marginBottom: 2,
+  },
+  summarySub: {
+    ...typography.bodySmall,
     color: colors.text.secondary,
-    marginBottom: spacing.xl,
+  },
+  counterBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C7D9ED',
+  },
+  counterBadgeText: {
+    ...typography.badge,
+    color: colors.primary,
+    fontWeight: '800',
   },
   sectionCard: {
+    padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    paddingBottom: 8,
   },
   sectionTitle: {
-    ...typography.h2,
-    color: colors.primary,
-    marginBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.xs,
+    ...typography.caption,
+    color: colors.text.secondary,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  sectionBadge: {
+    ...typography.badge,
+    fontSize: 9,
+    color: colors.secondary,
+    backgroundColor: colors.secondaryLight,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
   },
   checklistItem: {
-    marginBottom: spacing.lg,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  checklistItemError: {
+    backgroundColor: '#FFF8F8',
+    padding: 8,
+    borderRadius: 8,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   checklistLabel: {
-    ...typography.bodyLarge,
+    ...typography.bodyMedium,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 8,
+  },
+  statusPillPass: {
+    backgroundColor: colors.status.successBg,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.status.successBorder,
+  },
+  statusPillTextPass: {
+    ...typography.badge,
+    fontSize: 9,
+    color: colors.status.success,
+  },
+  statusPillFail: {
+    backgroundColor: colors.status.errorBg,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.status.errorBorder,
+  },
+  statusPillTextFail: {
+    ...typography.badge,
+    fontSize: 9,
+    color: colors.status.error,
   },
   toggleRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: 8,
   },
   toggleButton: {
     flex: 1,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: colors.surfaceVariant,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   passActive: {
-    backgroundColor: colors.status.success,
+    backgroundColor: colors.status.successBg,
     borderColor: colors.status.success,
   },
   failActive: {
-    backgroundColor: colors.status.error,
+    backgroundColor: colors.status.errorBg,
     borderColor: colors.status.error,
   },
+  toggleIcon: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginRight: 6,
+    color: colors.text.muted,
+  },
+  activeIcon: {
+    color: colors.text.primary,
+  },
   toggleText: {
-    ...typography.bodyMedium,
+    ...typography.bodySmall,
     color: colors.text.secondary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   activeText: {
-    color: colors.text.inverse,
-  },
-  errorText: {
-    color: colors.status.error,
+    color: colors.text.primary,
+    fontWeight: '800',
   },
   errorHint: {
     ...typography.bodySmall,
+    fontSize: 11,
     color: colors.status.error,
-    marginTop: spacing.xs,
-  },
-  footer: {
-    marginTop: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  photoActions: {
-    marginTop: spacing.md,
-  },
-  successText: {
-    ...typography.bodyLarge,
-    color: colors.status.success,
+    marginTop: 6,
     fontWeight: '600',
   },
   errorCard: {
     borderColor: colors.status.error,
+    borderWidth: 1.5,
+  },
+  photoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  photoPreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: 12,
+  },
+  photoDetails: {
+    flex: 1,
+  },
+  photoVerifiedBadge: {
+    backgroundColor: colors.status.successBg,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  photoVerifiedText: {
+    ...typography.bodySmall,
+    fontSize: 11,
+    color: colors.status.success,
+    fontWeight: '700',
+  },
+  retakeBtn: {
+    minHeight: 38,
+    paddingVertical: 6,
+  },
+  noPhotoContainer: {
+    gap: 12,
+  },
+  noPhotoDesc: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    lineHeight: 18,
+  },
+  stickyFooter: {
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 });

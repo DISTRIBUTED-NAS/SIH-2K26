@@ -10,16 +10,25 @@ interface HistoryCardProps {
   onPress: (id: string) => void;
 }
 
-const DECISION_COLORS: Record<OfficerDecision, string> = {
-  VERIFIED: '#1a7a4a',
-  REJECTED: '#c0392b',
-  NEEDS_FOLLOW_UP: '#c47f17',
-};
-
-const DECISION_LABELS: Record<OfficerDecision, string> = {
-  VERIFIED: 'Verified',
-  REJECTED: 'Rejected',
-  NEEDS_FOLLOW_UP: 'Needs Follow-up',
+const DECISION_META: Record<OfficerDecision, { label: string; color: string; bg: string; icon: string }> = {
+  VERIFIED: { 
+    label: 'VERIFIED', 
+    color: '#2E7D32', 
+    bg: 'rgba(46, 125, 50, 0.12)', 
+    icon: '✓' 
+  },
+  REJECTED: { 
+    label: 'REJECTED', 
+    color: '#C62828', 
+    bg: 'rgba(198, 40, 40, 0.12)', 
+    icon: '✕' 
+  },
+  NEEDS_FOLLOW_UP: { 
+    label: 'FOLLOW-UP', 
+    color: '#C67D0A', 
+    bg: 'rgba(198, 125, 10, 0.12)', 
+    icon: '⚠' 
+  },
 };
 
 function formatDate(iso?: string): string {
@@ -36,42 +45,57 @@ function formatDate(iso?: string): string {
 }
 
 export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onPress }) => {
-  const decisionColor = item.decision ? DECISION_COLORS[item.decision as OfficerDecision] : colors.text.secondary;
-  const decisionLabel = item.decision ? DECISION_LABELS[item.decision as OfficerDecision] : 'No Decision';
+  const meta = item.decision ? DECISION_META[item.decision as OfficerDecision] : null;
 
-  const syncLabel =
-    item.syncStatus === 'SYNCED' ? '✓ Synced' : '⏳ Pending synchronisation';
-  const syncColor =
-    item.syncStatus === 'SYNCED' ? colors.status.success : colors.status.warning;
+  const isSynced = item.syncStatus === 'SYNCED';
 
   return (
     <TouchableOpacity onPress={() => onPress(item.id)} activeOpacity={0.8}>
       <AppCard style={styles.card}>
         {/* Header: App ID + Decision badge */}
         <View style={styles.headerRow}>
-          <Text style={styles.appId}>#{item.applicationId}</Text>
-          <View style={[styles.decisionBadge, { backgroundColor: decisionColor }]}>
-            <Text style={styles.decisionBadgeText}>{decisionLabel}</Text>
+          <View style={styles.caseBadge}>
+            <Text style={styles.appId}>CASE #{item.applicationId}</Text>
           </View>
+          {meta ? (
+            <View style={[styles.decisionBadge, { backgroundColor: meta.bg, borderColor: meta.color }]}>
+              <Text style={[styles.decisionBadgeText, { color: meta.color }]}>
+                {meta.icon} {meta.label}
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.decisionBadge, { backgroundColor: 'rgba(100, 116, 139, 0.12)' }]}>
+              <Text style={[styles.decisionBadgeText, { color: colors.text.secondary }]}>PENDING</Text>
+            </View>
+          )}
         </View>
 
-        {/* Business & instrument */}
+        {/* Business & Location */}
         {item.businessName ? (
-          <Text style={styles.business}>{item.businessName}</Text>
-        ) : null}
-        <Text style={styles.instrument}>{item.instrumentName}</Text>
-        {item.instrumentModel ? (
-          <Text style={styles.instrumentModel}>{item.instrumentModel}</Text>
+          <Text style={styles.business} numberOfLines={1}>{item.businessName}</Text>
         ) : null}
 
-        {/* Footer: date + sync */}
+        {/* Instrument */}
+        <View style={styles.instrumentRow}>
+          <Text style={styles.instrumentIcon}>⚖</Text>
+          <Text style={styles.instrument} numberOfLines={1}>{item.instrumentName}</Text>
+          {item.instrumentModel ? (
+            <View style={styles.modelTag}>
+              <Text style={styles.instrumentModel}>{item.instrumentModel}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Footer: date + sync pill */}
         <View style={styles.footerRow}>
           <Text style={styles.date}>
             🗓 {formatDate(item.completedAt)}
           </Text>
-          <Text style={[styles.syncStatus, { color: syncColor }]}>
-            {syncLabel}
-          </Text>
+          <View style={[styles.syncPill, isSynced ? styles.syncPillSynced : styles.syncPillQueue]}>
+            <Text style={[styles.syncStatus, isSynced ? styles.syncTextSynced : styles.syncTextQueue]}>
+              {isSynced ? '✓ Central Synced' : '⏳ Terminal Queue'}
+            </Text>
+          </View>
         </View>
       </AppCard>
     </TouchableOpacity>
@@ -81,59 +105,111 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({ item, onPress }) => {
 const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  caseBadge: {
+    backgroundColor: 'rgba(15, 58, 102, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
   appId: {
-    ...typography.bodyMedium,
-    color: colors.text.secondary,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.5,
   },
   decisionBadge: {
-    borderRadius: 8,
+    borderRadius: 6,
     paddingVertical: 3,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   decisionBadgeText: {
-    ...typography.bodySmall,
-    color: '#ffffff',
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   business: {
-    ...typography.bodyMedium,
+    ...typography.h3,
+    color: colors.text.primary,
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+  instrumentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  instrumentIcon: {
+    fontSize: 14,
     color: colors.text.secondary,
-    marginBottom: 2,
+    marginRight: 6,
   },
   instrument: {
-    ...typography.bodyLarge,
-    color: colors.text.primary,
-    fontWeight: '600',
-    marginBottom: 2,
+    ...typography.bodyMedium,
+    color: colors.text.secondary,
+    flex: 1,
+  },
+  modelTag: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginLeft: 6,
   },
   instrumentModel: {
-    ...typography.bodySmall,
+    fontSize: 10,
     color: colors.text.secondary,
-    marginBottom: spacing.sm,
+    fontWeight: '600',
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.xs,
+    borderTopColor: '#F1F5F9',
   },
   date: {
-    ...typography.bodySmall,
+    fontSize: 11,
     color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  syncPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  syncPillSynced: {
+    backgroundColor: 'rgba(46, 125, 50, 0.1)',
+  },
+  syncPillQueue: {
+    backgroundColor: 'rgba(198, 125, 10, 0.1)',
   },
   syncStatus: {
-    ...typography.bodySmall,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  syncTextSynced: {
+    color: colors.status.success,
+  },
+  syncTextQueue: {
+    color: colors.accent,
   },
 });
+

@@ -64,8 +64,15 @@ export const RootNavigator = () => {
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: colors.primary },
+          headerStyle: { 
+            backgroundColor: colors.primary,
+          },
           headerTintColor: colors.text.inverse,
+          headerTitleStyle: {
+            fontSize: 17,
+            fontWeight: '700',
+            color: colors.text.inverse,
+          },
         }}
       >
         {isAuthenticated ? (

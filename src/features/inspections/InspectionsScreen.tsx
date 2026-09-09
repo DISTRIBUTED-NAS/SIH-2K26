@@ -32,11 +32,11 @@ export const InspectionsScreen = () => {
     try {
       const data = await inspectionService.getAssignedInspections(currentFilter);
       setInspections(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof AppError) {
         setError(err.userMessage);
       } else {
-        setError('An unexpected error occurred while loading inspections.');
+        setError('Unable to load assigned inspection list.');
       }
     } finally {
       setIsInitialLoading(false);
@@ -53,41 +53,52 @@ export const InspectionsScreen = () => {
   };
 
   const renderFilterBar = () => {
-    const filters: { label: string; value: FilterType }[] = [
-      { label: 'Today', value: 'TODAY' },
-      { label: 'Upcoming', value: 'UPCOMING' },
-      { label: 'Past', value: 'PAST' },
+    const filters: { label: string; value: FilterType; icon: string }[] = [
+      { label: 'Today', value: 'TODAY', icon: '📍' },
+      { label: 'Upcoming', value: 'UPCOMING', icon: '🗓️' },
+      { label: 'Past', value: 'PAST', icon: '📁' },
     ];
 
     return (
-      <View style={styles.filterBar}>
-        {filters.map((f) => {
-          const isActive = filter === f.value;
-          return (
-            <TouchableOpacity
-              key={f.value}
-              style={[styles.filterChip, isActive && styles.filterChipActive]}
-              onPress={() => setFilter(f.value)}
-              disabled={isInitialLoading}
-            >
-              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.filterSection}>
+        <View style={styles.filterBar}>
+          {filters.map((f) => {
+            const isActive = filter === f.value;
+            return (
+              <TouchableOpacity
+                key={f.value}
+                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                onPress={() => setFilter(f.value)}
+                disabled={isInitialLoading}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.filterIcon}>{f.icon}</Text>
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.headerCountRow}>
+          <Text style={styles.headerCountText}>
+            SHOWING {inspections.length} {filter} VERIFICATION {inspections.length === 1 ? 'CASE' : 'CASES'}
+          </Text>
+        </View>
       </View>
     );
   };
 
   const renderEmptyComponent = () => {
-    if (isInitialLoading) return null;
-    if (error) return null;
+    if (isInitialLoading || error) return null;
 
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyTitle}>No inspections found</Text>
-        <Text style={styles.emptySubtitle}>You have no assigned inspections for this category.</Text>
+        <Text style={styles.emptyIcon}>📋</Text>
+        <Text style={styles.emptyTitle}>No Assigned Cases</Text>
+        <Text style={styles.emptySubtitle}>
+          There are no field verification applications listed under {filter.toLowerCase()} schedule.
+        </Text>
       </View>
     );
   };
@@ -96,7 +107,7 @@ export const InspectionsScreen = () => {
     return (
       <ScreenWrapper hasError={true} errorMessage={error}>
         <View style={styles.retryContainer}>
-          <PrimaryButton title="Retry" onPress={() => loadData(filter)} />
+          <PrimaryButton title="Retry Loading Cases" onPress={() => loadData(filter)} />
         </View>
       </ScreenWrapper>
     );
@@ -132,53 +143,95 @@ export const InspectionsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  filterBar: {
-    flexDirection: 'row',
-    padding: spacing.md,
+  filterSection: {
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    justifyContent: 'space-around',
+    paddingTop: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  filterBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   filterChip: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    backgroundColor: colors.background,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   filterChipActive: {
     backgroundColor: colors.primary,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  filterIcon: {
+    fontSize: 12,
+    marginRight: 6,
   },
   filterText: {
-    ...typography.bodyMedium,
+    ...typography.bodySmall,
     color: colors.text.secondary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   filterTextActive: {
     color: colors.text.inverse,
   },
+  headerCountRow: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  headerCountText: {
+    ...typography.caption,
+    fontSize: 10,
+    color: colors.text.muted,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
   listContent: {
-    padding: spacing.lg,
+    padding: spacing.md,
     flexGrow: 1,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xxl,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyIcon: {
+    fontSize: 36,
+    marginBottom: 8,
   },
   emptyTitle: {
-    ...typography.h2,
+    ...typography.h3,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
+    marginBottom: 4,
   },
   emptySubtitle: {
-    ...typography.bodyLarge,
+    ...typography.bodySmall,
     color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 18,
   },
   retryContainer: {
     padding: spacing.xl,
     alignItems: 'center',
-  }
+  },
 });

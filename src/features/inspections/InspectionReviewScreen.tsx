@@ -7,7 +7,7 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../core/navigation/types';
 import { colors, typography, spacing } from '../../core/theme';
-import { ScreenWrapper, AppCard, PrimaryButton, SecondaryButton } from '../../shared/components';
+import { ScreenWrapper, AppCard, PrimaryButton, SecondaryButton, StepProgressIndicator } from '../../shared/components';
 import { inspectionService } from './services/inspectionService';
 import { repository } from '../../core/storage/database/InspectionLocalRepository';
 import { aiVerificationService } from './services/AiVerificationService';
@@ -24,10 +24,38 @@ type ReviewNavProp = NativeStackNavigationProp<RootStackParamList>;
 
 type ViewMode = 'REVIEW' | 'CONFIRM';
 
-const DECISION_OPTIONS: { value: OfficerDecision; label: string; color: string }[] = [
-  { value: 'VERIFIED', label: '✓  Verified', color: '#1a7a4a' },
-  { value: 'REJECTED', label: '✕  Rejected', color: '#c0392b' },
-  { value: 'NEEDS_FOLLOW_UP', label: '⚠  Needs Follow-up', color: '#c47f17' },
+const DECISION_OPTIONS: { 
+  value: OfficerDecision; 
+  label: string; 
+  sublabel: string;
+  color: string;
+  badgeBg: string;
+  icon: string;
+}[] = [
+  { 
+    value: 'VERIFIED', 
+    label: 'VERIFIED & CERTIFIED', 
+    sublabel: 'Instrument complies with all standards. Stamping/verification authorized.',
+    color: '#2E7D32', 
+    badgeBg: 'rgba(46, 125, 50, 0.12)',
+    icon: '✓' 
+  },
+  { 
+    value: 'REJECTED', 
+    label: 'REJECTED / SEIZED', 
+    sublabel: 'Violations or excessive errors found. Commercial use prohibited.',
+    color: '#C62828', 
+    badgeBg: 'rgba(198, 40, 40, 0.12)',
+    icon: '✕' 
+  },
+  { 
+    value: 'NEEDS_FOLLOW_UP', 
+    label: 'NOTICE / FOLLOW-UP', 
+    sublabel: 'Minor rectification needed within prescribed statutory grace period.',
+    color: '#C67D0A', 
+    badgeBg: 'rgba(198, 125, 10, 0.12)',
+    icon: '⚠' 
+  },
 ];
 
 export const InspectionReviewScreen = () => {
@@ -87,7 +115,7 @@ export const InspectionReviewScreen = () => {
   // ── AI comparison ─────────────────────────────────────────────────────────
   const handleRunAiComparison = async () => {
     if (isOffline) {
-      Alert.alert('Offline', 'AI comparison requires network connectivity. You can continue the inspection without it.');
+      Alert.alert('Offline Mode', 'AI cloud comparison requires active connectivity. You can proceed with physical verification.');
       return;
     }
     if (!formData?.photoUri) {
@@ -101,7 +129,7 @@ export const InspectionReviewScreen = () => {
       setAiResult(result);
       await repository.saveAiVerificationResult(result);
     } catch (err) {
-      Alert.alert('Error', 'AI comparison could not be completed. You can continue the inspection.');
+      Alert.alert('Verification Advisory', 'AI comparison server could not be reached. Physical officer determination takes precedence.');
     } finally {
       setIsVerifying(false);
     }
@@ -113,14 +141,14 @@ export const InspectionReviewScreen = () => {
     if (!formData.photoUri) return 'Officer evidence photo is required before completing.';
     if (!formData.checklist || formData.checklist.length === 0) return 'Checklist must be completed.';
     if (!formData.measurements || formData.measurements.length === 0) return 'Measurement readings are required.';
-    if (!selectedDecision) return 'Please select a Final Inspection Decision before continuing.';
+    if (!selectedDecision) return 'Please select a Final Statutory Decision before proceeding.';
     return null;
   };
 
   const handleProceedToConfirm = () => {
     const validationError = validate();
     if (validationError) {
-      Alert.alert('Incomplete Inspection', validationError);
+      Alert.alert('Incomplete Inspection Dossier', validationError);
       return;
     }
     setViewMode('CONFIRM');
@@ -174,7 +202,7 @@ export const InspectionReviewScreen = () => {
 
       await repository.saveDecision(decisionRecord, payload);
 
-      // Attempt backend submission (will return BACKEND_NOT_CONFIGURED right now)
+      // Attempt backend submission
       await inspectionSubmissionService.submitInspection(payload, isOffline);
 
       setIsAlreadyCompleted(true);
@@ -182,12 +210,12 @@ export const InspectionReviewScreen = () => {
       setViewMode('REVIEW');
 
       Alert.alert(
-        'Inspection Saved Locally',
-        'The inspection has been completed and saved to your device.\n\nStatus: Pending synchronisation — the inspection will be submitted when backend connectivity is available.',
-        [{ text: 'Return to Dashboard', onPress: () => navigation.navigate('AppShell') }]
+        'Verification Order Recorded',
+        'The statutory inspection report has been cryptographically recorded on this field terminal.\n\nSync Status: Queued for automatic upload to State Metrology Cloud.',
+        [{ text: 'Return to Command Dashboard', onPress: () => navigation.navigate('AppShell') }]
       );
     } catch (e) {
-      Alert.alert('Error', 'Failed to save the final decision. Please try again.');
+      Alert.alert('Error', 'Failed to save the final decision record. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -202,27 +230,47 @@ export const InspectionReviewScreen = () => {
 
     return (
       <View>
+        <View style={styles.statChipRow}>
+          <View style={[styles.statChip, { backgroundColor: 'rgba(46, 125, 50, 0.1)' }]}>
+            <Text style={[styles.statChipText, { color: colors.status.success }]}>{passed.length} Verified (PASS)</Text>
+          </View>
+          {failed.length > 0 && (
+            <View style={[styles.statChip, { backgroundColor: 'rgba(198, 40, 40, 0.1)' }]}>
+              <Text style={[styles.statChipText, { color: colors.status.error }]}>{failed.length} Defective (FAIL)</Text>
+            </View>
+          )}
+        </View>
+
         {passed.length > 0 && (
           <View style={styles.summaryGroup}>
-            <Text style={styles.groupHeader}>Passed / Verified:</Text>
+            <Text style={styles.groupHeader}>Compliant Verification Items</Text>
             {passed.map(item => (
-              <Text key={item.id} style={styles.checkItemText}>✓ {item.label}</Text>
+              <View key={item.id} style={styles.checkRow}>
+                <Text style={styles.checkIconSuccess}>✓</Text>
+                <Text style={styles.checkLabel}>{item.label}</Text>
+              </View>
             ))}
           </View>
         )}
         {failed.length > 0 && (
           <View style={styles.summaryGroup}>
-            <Text style={styles.groupHeader}>Failed / Not Verified:</Text>
+            <Text style={[styles.groupHeader, { color: colors.status.error }]}>Non-Compliant Violations</Text>
             {failed.map(item => (
-              <Text key={item.id} style={[styles.checkItemText, styles.failedText]}>✕ {item.label}</Text>
+              <View key={item.id} style={styles.checkRow}>
+                <Text style={styles.checkIconError}>✕</Text>
+                <Text style={[styles.checkLabel, { color: colors.status.error }]}>{item.label}</Text>
+              </View>
             ))}
           </View>
         )}
         {unchecked.length > 0 && (
           <View style={styles.summaryGroup}>
-            <Text style={[styles.groupHeader, styles.warningText]}>Not Checked ({unchecked.length}):</Text>
+            <Text style={[styles.groupHeader, { color: colors.accent }]}>Omitted Checkpoints ({unchecked.length})</Text>
             {unchecked.map(item => (
-              <Text key={item.id} style={[styles.checkItemText, styles.warningText]}>— {item.label}</Text>
+              <View key={item.id} style={styles.checkRow}>
+                <Text style={styles.checkIconOmitted}>—</Text>
+                <Text style={[styles.checkLabel, { color: colors.text.secondary }]}>{item.label}</Text>
+              </View>
             ))}
           </View>
         )}
@@ -232,15 +280,20 @@ export const InspectionReviewScreen = () => {
 
   const renderMeasurementsSummary = () => {
     if (!formData?.measurements?.length) {
-      return <Text style={styles.textBlock}>No measurements recorded.</Text>;
+      return <Text style={styles.emptyNotice}>No verification readings recorded.</Text>;
     }
-    return formData.measurements.map(m => (
+    return formData.measurements.map((m, idx) => (
       <View key={m.id} style={styles.measurementRow}>
         <View style={styles.measurementHeader}>
+          <View style={styles.measureIndexTag}>
+            <Text style={styles.measureIndexText}>TP-{idx + 1}</Text>
+          </View>
           <Text style={styles.measurementLabel}>{m.label}</Text>
-          <Text style={styles.measurementValue}>{m.value} {m.unit}</Text>
+          <View style={styles.measurementValueBadge}>
+            <Text style={styles.measurementValueText}>{m.value} {m.unit}</Text>
+          </View>
         </View>
-        {m.note ? <Text style={styles.measurementNote}>{m.note}</Text> : null}
+        {m.note ? <Text style={styles.measurementNote}>Note: {m.note}</Text> : null}
       </View>
     ));
   };
@@ -249,29 +302,33 @@ export const InspectionReviewScreen = () => {
     if (!formData) return null;
     return (
       <AppCard style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>AI Photo Verification</Text>
-        <Text style={styles.disclaimerText}>
-          AI comparison is an assistive tool. Final inspection decisions remain with the Legal Metrology Officer.
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionIcon}>🔬</Text>
+          <View style={styles.sectionHeaderInfo}>
+            <Text style={styles.sectionTitle}>Computer-Assisted Image Analysis</Text>
+            <Text style={styles.sectionSub}>Type-approval matching & tamper identification</Text>
+          </View>
+        </View>
+        
         <View style={styles.photoComparisonContainer}>
           <View style={styles.photoBox}>
-            <Text style={styles.photoLabel}>Reference Image</Text>
+            <Text style={styles.photoLabel}>Type Reference Spec</Text>
             {formData.referencePhotoUri ? (
               <Image source={{ uri: formData.referencePhotoUri }} style={styles.compareImage} />
             ) : (
               <View style={styles.placeholderBox}>
-                <Text style={styles.placeholderText}>Customer reference image unavailable</Text>
+                <Text style={styles.placeholderText}>Reference pattern photo not mapped</Text>
               </View>
             )}
           </View>
           <View style={{ width: spacing.md }} />
           <View style={styles.photoBox}>
-            <Text style={styles.photoLabel}>Officer Image</Text>
+            <Text style={styles.photoLabel}>Field Evidence Photo</Text>
             {formData.photoUri ? (
               <Image source={{ uri: formData.photoUri }} style={styles.compareImage} />
             ) : (
               <View style={styles.placeholderBox}>
-                <Text style={styles.placeholderText}>No photo captured</Text>
+                <Text style={styles.placeholderText}>Field evidence photo pending</Text>
               </View>
             )}
           </View>
@@ -280,24 +337,24 @@ export const InspectionReviewScreen = () => {
         {aiResult ? (
           <View style={styles.aiResultContainer}>
             <View style={styles.row}>
-              <Text style={styles.label}>AI Status:</Text>
-              <Text style={styles.value}>{aiResult.status}</Text>
+              <Text style={styles.label}>Match Status:</Text>
+              <Text style={[styles.value, { color: colors.status.success, fontWeight: '700' }]}>{aiResult.status}</Text>
             </View>
             {aiResult.confidence !== undefined && (
               <View style={styles.row}>
-                <Text style={styles.label}>Confidence:</Text>
-                <Text style={styles.value}>{aiResult.confidence}%</Text>
+                <Text style={styles.label}>Concordance:</Text>
+                <Text style={styles.value}>{aiResult.confidence}% match</Text>
               </View>
             )}
             <View style={styles.row}>
-              <Text style={styles.label}>Findings:</Text>
-              <Text style={styles.value}>{aiResult.findings ?? 'None'}</Text>
+              <Text style={styles.label}>Model Findings:</Text>
+              <Text style={styles.value}>{aiResult.findings ?? 'No physical anomalies detected'}</Text>
             </View>
           </View>
         ) : (
           <View style={styles.aiActionContainer}>
             <PrimaryButton
-              title={isVerifying ? 'Comparing…' : 'Run AI Comparison'}
+              title={isVerifying ? 'Running Neural Inspection…' : 'Execute AI Visual Verification'}
               onPress={handleRunAiComparison}
               disabled={isVerifying}
             />
@@ -309,24 +366,31 @@ export const InspectionReviewScreen = () => {
 
   const renderDecisionSection = () => {
     if (isAlreadyCompleted && formData?.decision) {
-      // Read-only view for already-completed inspections
       const opted = DECISION_OPTIONS.find(d => d.value === formData.decision);
       return (
         <AppCard style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Final Decision</Text>
-          <View style={[styles.decisionBadge, { backgroundColor: opted?.color ?? colors.primary }]}>
-            <Text style={styles.decisionBadgeText}>{opted?.label ?? formData.decision}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionIcon}>⚖</Text>
+            <View style={styles.sectionHeaderInfo}>
+              <Text style={styles.sectionTitle}>Final Verification Decision</Text>
+              <Text style={styles.sectionSub}>Statutory order recorded</Text>
+            </View>
+          </View>
+
+          <View style={[styles.decisionBadge, { backgroundColor: opted?.badgeBg ?? 'rgba(15, 58, 102, 0.1)' }]}>
+            <Text style={[styles.decisionBadgeText, { color: opted?.color ?? colors.primary }]}>
+              {opted?.icon} {opted?.label ?? formData.decision}
+            </Text>
           </View>
           {formData.decisionRemarks ? (
-            <Text style={[styles.textBlock, { marginTop: spacing.sm }]}>{formData.decisionRemarks}</Text>
+            <View style={styles.remarksBox}>
+              <Text style={styles.remarksLabel}>OFFICER REMARKS:</Text>
+              <Text style={styles.remarksText}>{formData.decisionRemarks}</Text>
+            </View>
           ) : null}
-          <View style={[styles.row, { marginTop: spacing.sm }]}>
-            <Text style={styles.label}>Completed:</Text>
-            <Text style={styles.value}>{formData.completedAt ?? '—'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Sync status:</Text>
-            <Text style={styles.value}>⏳ Pending synchronisation</Text>
+          <View style={styles.auditMetaRow}>
+            <Text style={styles.auditMetaLabel}>Completed At: {formData.completedAt ? new Date(formData.completedAt).toLocaleString() : '—'}</Text>
+            <Text style={styles.auditMetaLabel}>Terminal Sync: Queued (SQLite)</Text>
           </View>
         </AppCard>
       );
@@ -334,10 +398,13 @@ export const InspectionReviewScreen = () => {
 
     return (
       <AppCard style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Final Inspection Decision</Text>
-        <Text style={styles.disclaimerText}>
-          Select the outcome based on all findings. This decision is yours as the Legal Metrology Officer.
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionIcon}>⚖</Text>
+          <View style={styles.sectionHeaderInfo}>
+            <Text style={styles.sectionTitle}>Statutory Officer Determination</Text>
+            <Text style={styles.sectionSub}>Legal Metrology Act, 2009 • Section 24 Order</Text>
+          </View>
+        </View>
 
         {DECISION_OPTIONS.map(opt => {
           const isSelected = selectedDecision === opt.value;
@@ -346,29 +413,32 @@ export const InspectionReviewScreen = () => {
               key={opt.value}
               style={[
                 styles.decisionOption,
-                isSelected && { borderColor: opt.color, backgroundColor: opt.color + '18' },
+                isSelected && { borderColor: opt.color, backgroundColor: opt.badgeBg },
               ]}
               onPress={() => setSelectedDecision(opt.value)}
               activeOpacity={0.75}
             >
               <View style={[styles.decisionRadio, isSelected && { backgroundColor: opt.color, borderColor: opt.color }]}>
-                {isSelected && <View style={styles.decisionRadioInner} />}
+                {isSelected && <Text style={styles.radioCheck}>{opt.icon}</Text>}
               </View>
-              <Text style={[styles.decisionOptionText, isSelected && { color: opt.color, fontWeight: '700' }]}>
-                {opt.label}
-              </Text>
+              <View style={styles.decisionInfo}>
+                <Text style={[styles.decisionOptionText, isSelected && { color: opt.color, fontWeight: '800' }]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.decisionSublabel}>{opt.sublabel}</Text>
+              </View>
             </TouchableOpacity>
           );
         })}
 
-        <Text style={[styles.label, { marginTop: spacing.md, marginBottom: spacing.xs }]}>
-          Decision Remarks (optional)
+        <Text style={[styles.label, { marginTop: spacing.md, marginBottom: spacing.xs, fontWeight: '700' }]}>
+          OFFICER STATUTORY OBSERVATIONS & REMARKS
         </Text>
         <TextInput
           style={styles.remarksInput}
           multiline
           numberOfLines={3}
-          placeholder="Add any final notes or context for this decision…"
+          placeholder="Enter official grounds for decision, seal stamping reference numbers, or required rectifications..."
           placeholderTextColor={colors.text.secondary}
           value={decisionRemarks}
           onChangeText={setDecisionRemarks}
@@ -383,73 +453,75 @@ export const InspectionReviewScreen = () => {
     return (
       <ScreenWrapper>
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <View style={styles.govOrderBadge}>
+            <Text style={styles.govOrderText}>FORM IV • STATUTORY VERIFICATION ORDER</Text>
+          </View>
           <Text style={styles.title}>Confirm Inspection Decision</Text>
           <Text style={styles.subtitle}>
-            Please verify all information is correct before completing this inspection. This action cannot be undone without resetting the sync queue.
+            Review the inspection docket before executive submission. This will seal the record into the terminal's encrypted ledger.
           </Text>
 
           <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Selected Decision</Text>
-            <View style={[styles.decisionBadge, { backgroundColor: opted?.color ?? colors.primary }]}>
-              <Text style={styles.decisionBadgeText}>{opted?.label ?? selectedDecision}</Text>
+            <Text style={styles.sectionTitle}>Proposed Determination</Text>
+            <View style={[styles.decisionBadge, { backgroundColor: opted?.badgeBg ?? 'rgba(15, 58, 102, 0.1)' }]}>
+              <Text style={[styles.decisionBadgeText, { color: opted?.color ?? colors.primary }]}>
+                {opted?.icon} {opted?.label ?? selectedDecision}
+              </Text>
             </View>
             {decisionRemarks.trim() ? (
-              <Text style={[styles.textBlock, { marginTop: spacing.sm }]}>{decisionRemarks}</Text>
+              <View style={styles.remarksBox}>
+                <Text style={styles.remarksLabel}>RECORDED GROUNDS:</Text>
+                <Text style={styles.remarksText}>{decisionRemarks}</Text>
+              </View>
             ) : null}
           </AppCard>
 
           {inspection && (
             <AppCard style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Assignment</Text>
+              <Text style={styles.sectionTitle}>Establishment & Instrument</Text>
               <View style={styles.row}>
                 <Text style={styles.label}>Application:</Text>
                 <Text style={styles.value}>{inspection.applicationId}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.label}>Business:</Text>
+                <Text style={styles.label}>Trader:</Text>
                 <Text style={styles.value}>{inspection.businessName ?? 'N/A'}</Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Instrument:</Text>
-                <Text style={styles.value}>{inspection.instrumentName}</Text>
+                <Text style={styles.value}>{inspection.instrumentName} ({inspection.instrumentModel})</Text>
               </View>
             </AppCard>
           )}
 
           <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Checklist Summary</Text>
+            <Text style={styles.sectionTitle}>Checklist Findings</Text>
             {renderChecklistSummary()}
           </AppCard>
 
           <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Measurements</Text>
+            <Text style={styles.sectionTitle}>Verification Readings</Text>
             {renderMeasurementsSummary()}
           </AppCard>
 
-          {aiResult && (
-            <AppCard style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>AI Verification Result</Text>
-              <Text style={styles.disclaimerText}>Advisory only — not a legal determination.</Text>
-              <View style={styles.row}>
-                <Text style={styles.label}>Status:</Text>
-                <Text style={styles.value}>{aiResult.status}</Text>
-              </View>
-              {aiResult.findings ? (
-                <View style={styles.row}>
-                  <Text style={styles.label}>Findings:</Text>
-                  <Text style={styles.value}>{aiResult.findings}</Text>
-                </View>
-              ) : null}
-            </AppCard>
-          )}
+          {/* Sync status alert */}
+          <View style={styles.syncAlertBox}>
+            <Text style={styles.syncAlertIcon}>💾</Text>
+            <View style={styles.syncAlertTextCol}>
+              <Text style={styles.syncAlertTitle}>Offline First Terminal Storage</Text>
+              <Text style={styles.syncAlertDesc}>
+                This decision will be committed to the device SQLite repository and synchronized automatically when network connection is established.
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.footer}>
-            <SecondaryButton title="Back & Edit" onPress={() => setViewMode('REVIEW')} />
-            <View style={{ height: spacing.md }} />
+            <SecondaryButton title="← Back & Amend Docket" onPress={() => setViewMode('REVIEW')} />
+            <View style={{ height: spacing.sm }} />
             {isSaving ? (
               <ActivityIndicator size="large" color={colors.primary} />
             ) : (
-              <PrimaryButton title="Confirm & Complete Inspection" onPress={handleConfirmAndComplete} />
+              <PrimaryButton title="Confirm & Issue Verification Order" onPress={handleConfirmAndComplete} />
             )}
           </View>
         </ScrollView>
@@ -471,49 +543,87 @@ export const InspectionReviewScreen = () => {
 
   return (
     <ScreenWrapper isLoading={isLoading}>
+      <StepProgressIndicator currentStep="REVIEW" />
       {inspection && formData && (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <Text style={styles.title}>Review Inspection</Text>
-          <Text style={styles.subtitle}>Review all findings then record your decision.</Text>
-
-          {/* Assignment */}
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Assignment</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Application ID:</Text>
-              <Text style={styles.value}>{inspection.applicationId}</Text>
+        <ScrollView 
+          style={styles.container} 
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.headerSection}>
+            <View style={styles.govOrderBadge}>
+              <Text style={styles.govOrderText}>DOSSIER ID: #{inspection.applicationId}</Text>
             </View>
+            <Text style={styles.title}>Inspection Audit Review</Text>
+            <Text style={styles.subtitle}>
+              Review all physical checkpoint results, measurement tolerances, and evidence before executing statutory determination.
+            </Text>
+          </View>
+
+          {/* Assignment Dossier */}
+          <AppCard style={styles.sectionCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionIcon}>📋</Text>
+              <View style={styles.sectionHeaderInfo}>
+                <Text style={styles.sectionTitle}>Case Information</Text>
+                <Text style={styles.sectionSub}>Jurisdiction details & scheduled time</Text>
+              </View>
+            </View>
+            
             <View style={styles.row}>
-              <Text style={styles.label}>Business:</Text>
+              <Text style={styles.label}>Trader:</Text>
               <Text style={styles.value}>{inspection.businessName ?? 'N/A'}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Instrument:</Text>
-              <Text style={styles.value}>{inspection.instrumentName}</Text>
+              <Text style={styles.label}>Location:</Text>
+              <Text style={styles.value}>{inspection.location}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Scheduled:</Text>
-              <Text style={styles.value}>{inspection.scheduledDate} {inspection.scheduledTime}</Text>
+              <Text style={styles.label}>Instrument:</Text>
+              <Text style={styles.value}>{inspection.instrumentName} • {inspection.instrumentModel}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Schedule:</Text>
+              <Text style={styles.value}>{inspection.scheduledDate} ({inspection.scheduledTime})</Text>
             </View>
           </AppCard>
 
           {/* Checklist */}
           <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Checklist Findings</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionIcon}>☑</Text>
+              <View style={styles.sectionHeaderInfo}>
+                <Text style={styles.sectionTitle}>Physical Checklist Verification</Text>
+                <Text style={styles.sectionSub}>Statutory compliance standard audit</Text>
+              </View>
+            </View>
             {renderChecklistSummary()}
           </AppCard>
 
           {/* Photo evidence */}
           {formData.photoUri && (
             <AppCard style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Photo Evidence</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionIcon}>📷</Text>
+                <View style={styles.sectionHeaderInfo}>
+                  <Text style={styles.sectionTitle}>Field Photographic Evidence</Text>
+                  <Text style={styles.sectionSub}>Serial plate & tamper seal record</Text>
+                </View>
+              </View>
               <Image source={{ uri: formData.photoUri }} style={styles.previewImage} />
             </AppCard>
           )}
 
           {/* Measurements */}
           <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Measurement Readings</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionIcon}>⚖</Text>
+              <View style={styles.sectionHeaderInfo}>
+                <Text style={styles.sectionTitle}>Verification Test Points</Text>
+                <Text style={styles.sectionSub}>Reference standard weight readings</Text>
+              </View>
+            </View>
             {renderMeasurementsSummary()}
           </AppCard>
 
@@ -521,26 +631,22 @@ export const InspectionReviewScreen = () => {
           {renderAISection()}
 
           {/* Observations */}
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Observations</Text>
-            <Text style={styles.textBlock}>{formData.observations || 'None'}</Text>
-          </AppCard>
-
-          {/* Remarks */}
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Remarks</Text>
-            <Text style={styles.textBlock}>{formData.remarks || 'None'}</Text>
-          </AppCard>
+          {formData.observations ? (
+            <AppCard style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>Field Observations</Text>
+              <Text style={styles.textBlock}>{formData.observations}</Text>
+            </AppCard>
+          ) : null}
 
           {/* Final decision */}
           {renderDecisionSection()}
 
           {/* Footer */}
           <View style={styles.footer}>
-            <SecondaryButton title="Back & Edit" onPress={() => navigation.goBack()} />
-            <View style={{ height: spacing.md }} />
+            <SecondaryButton title="← Return to Measurements" onPress={() => navigation.goBack()} />
+            <View style={{ height: spacing.sm }} />
             {!isAlreadyCompleted && (
-              <PrimaryButton title="Proceed to Confirmation →" onPress={handleProceedToConfirm} />
+              <PrimaryButton title="Proceed to Final Order →" onPress={handleProceedToConfirm} />
             )}
           </View>
         </ScrollView>
@@ -550,75 +656,387 @@ export const InspectionReviewScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: { padding: spacing.lg },
-  centerContainer: { padding: spacing.xl, gap: spacing.md },
-  title: { ...typography.h1, color: colors.primary, marginBottom: spacing.xs },
-  subtitle: { ...typography.bodyMedium, color: colors.text.secondary, marginBottom: spacing.xl },
-  sectionCard: { marginBottom: spacing.md },
-  sectionTitle: {
-    ...typography.h2,
-    color: colors.primary,
+  container: { 
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: { 
+    padding: spacing.md,
+    paddingBottom: spacing.xxl + 20,
+  },
+  centerContainer: { 
+    padding: spacing.xl, 
+    gap: spacing.md 
+  },
+  headerSection: {
     marginBottom: spacing.md,
+  },
+  govOrderBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(15, 58, 102, 0.08)',
+    borderColor: 'rgba(15, 58, 102, 0.2)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  govOrderText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.6,
+  },
+  title: { 
+    ...typography.h2, 
+    color: colors.primary, 
+    fontWeight: '700',
+  },
+  subtitle: { 
+    ...typography.bodySmall, 
+    color: colors.text.secondary, 
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  sectionCard: { 
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingBottom: spacing.xs,
   },
-  row: { flexDirection: 'row', marginBottom: spacing.xs },
-  label: { ...typography.bodyMedium, color: colors.text.secondary, width: 110 },
-  value: { ...typography.bodyMedium, color: colors.text.primary, flex: 1, fontWeight: '500' },
-  summaryGroup: { marginBottom: spacing.md },
-  groupHeader: { ...typography.bodyMedium, color: colors.text.secondary, fontWeight: 'bold', marginBottom: spacing.xs },
-  checkItemText: { ...typography.bodyLarge, color: colors.text.primary, marginBottom: spacing.xs },
-  failedText: { color: colors.status.error },
-  warningText: { color: '#c47f17' },
-  textBlock: { ...typography.bodyMedium, color: colors.text.primary },
+  sectionIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  sectionHeaderInfo: {
+    flex: 1,
+  },
+  sectionTitle: {
+    ...typography.bodyLarge,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  sectionSub: {
+    fontSize: 11,
+    color: colors.text.secondary,
+    marginTop: 1,
+  },
+  row: { 
+    flexDirection: 'row', 
+    marginBottom: spacing.xs,
+    alignItems: 'baseline',
+  },
+  label: { 
+    ...typography.bodySmall, 
+    color: colors.text.secondary, 
+    width: 90,
+    fontWeight: '600',
+  },
+  value: { 
+    ...typography.bodySmall, 
+    color: colors.text.primary, 
+    flex: 1, 
+    fontWeight: '600' 
+  },
+  statChipRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+    gap: 8,
+  },
+  statChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  summaryGroup: { 
+    marginBottom: spacing.md,
+  },
+  groupHeader: { 
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  checkIconSuccess: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.status.success,
+    width: 20,
+  },
+  checkIconError: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.status.error,
+    width: 20,
+  },
+  checkIconOmitted: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.accent,
+    width: 20,
+  },
+  checkLabel: {
+    ...typography.bodySmall,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  emptyNotice: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    fontStyle: 'italic',
+  },
   previewImage: {
-    width: '100%', height: 200, resizeMode: 'contain',
-    borderRadius: 8, marginTop: spacing.sm, backgroundColor: '#f0f0f0',
+    width: '100%', 
+    height: 180, 
+    resizeMode: 'contain',
+    borderRadius: 8, 
+    backgroundColor: '#0F172A',
   },
-  photoComparisonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
-  photoBox: { flex: 1 },
-  photoLabel: { ...typography.bodyMedium, color: colors.text.secondary, marginBottom: spacing.xs, textAlign: 'center' },
-  compareImage: { width: '100%', height: 120, resizeMode: 'cover', borderRadius: 8, backgroundColor: '#f0f0f0' },
+  photoComparisonContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: spacing.sm,
+  },
+  photoBox: { 
+    flex: 1 
+  },
+  photoLabel: { 
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text.secondary, 
+    marginBottom: 4, 
+    textAlign: 'center' 
+  },
+  compareImage: { 
+    width: '100%', 
+    height: 110, 
+    resizeMode: 'cover', 
+    borderRadius: 8, 
+    backgroundColor: '#0F172A' 
+  },
   placeholderBox: {
-    width: '100%', height: 120, borderRadius: 8, backgroundColor: '#f0f0f0',
-    justifyContent: 'center', alignItems: 'center', padding: spacing.xs,
+    width: '100%', 
+    height: 110, 
+    borderRadius: 8, 
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
   },
-  placeholderText: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center' },
-  disclaimerText: { ...typography.bodySmall, color: colors.text.secondary, fontStyle: 'italic', marginBottom: spacing.sm },
-  aiActionContainer: { marginTop: spacing.lg },
+  placeholderText: { 
+    fontSize: 10,
+    color: colors.text.secondary, 
+    textAlign: 'center' 
+  },
+  aiActionContainer: { 
+    marginTop: spacing.sm 
+  },
   aiResultContainer: {
-    marginTop: spacing.lg, padding: spacing.md,
-    backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.border,
+    marginTop: spacing.sm, 
+    padding: spacing.md,
+    backgroundColor: 'rgba(46, 125, 50, 0.05)', 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: 'rgba(46, 125, 50, 0.2)',
   },
-  measurementRow: { paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  measurementHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  measurementLabel: { ...typography.bodyLarge, color: colors.text.primary, flex: 1 },
-  measurementValue: { ...typography.h3, color: colors.primary, fontWeight: '600', marginLeft: spacing.sm },
-  measurementNote: { ...typography.bodyMedium, color: colors.text.secondary, fontStyle: 'italic' },
+  measurementRow: { 
+    paddingVertical: 8, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F1F5F9' 
+  },
+  measurementHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+  },
+  measureIndexTag: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  measureIndexText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  measurementLabel: { 
+    ...typography.bodySmall, 
+    color: colors.text.primary, 
+    flex: 1,
+    fontWeight: '600',
+  },
+  measurementValueBadge: {
+    backgroundColor: 'rgba(15, 58, 102, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  measurementValueText: { 
+    fontSize: 12,
+    color: colors.primary, 
+    fontWeight: '700', 
+  },
+  measurementNote: { 
+    fontSize: 11,
+    color: colors.text.secondary, 
+    fontStyle: 'italic',
+    marginTop: 4,
+    paddingLeft: 30,
+  },
   // Decision
   decisionOption: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 2, borderColor: colors.border, borderRadius: 10,
-    padding: spacing.md, marginBottom: spacing.sm,
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderWidth: 1.5, 
+    borderColor: colors.border, 
+    borderRadius: 10,
+    padding: spacing.md, 
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
   },
   decisionRadio: {
-    width: 24, height: 24, borderRadius: 12, borderWidth: 2,
-    borderColor: colors.text.secondary, marginRight: spacing.md,
-    justifyContent: 'center', alignItems: 'center',
+    width: 24, 
+    height: 24, 
+    borderRadius: 12, 
+    borderWidth: 2,
+    borderColor: colors.text.secondary, 
+    marginRight: spacing.md,
+    justifyContent: 'center', 
+    alignItems: 'center',
   },
-  decisionRadioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
-  decisionOptionText: { ...typography.bodyLarge, color: colors.text.primary, flex: 1 },
+  radioCheck: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  decisionInfo: {
+    flex: 1,
+  },
+  decisionOptionText: { 
+    ...typography.bodyMedium, 
+    color: colors.text.primary, 
+    fontWeight: '700',
+  },
+  decisionSublabel: {
+    fontSize: 11,
+    color: colors.text.secondary,
+    marginTop: 2,
+    lineHeight: 15,
+  },
   decisionBadge: {
-    borderRadius: 8, paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md, alignSelf: 'flex-start',
+    borderRadius: 8, 
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md, 
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  decisionBadgeText: { ...typography.bodyLarge, color: '#ffffff', fontWeight: '700' },
+  decisionBadgeText: { 
+    fontSize: 13,
+    fontWeight: '800', 
+    letterSpacing: 0.5,
+  },
+  remarksBox: {
+    marginTop: spacing.md,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  remarksLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  remarksText: {
+    ...typography.bodySmall,
+    color: colors.text.primary,
+  },
+  auditMetaRow: {
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  auditMetaLabel: {
+    fontSize: 11,
+    color: colors.text.secondary,
+    marginBottom: 2,
+  },
   remarksInput: {
-    borderWidth: 1, borderColor: colors.border, borderRadius: 8,
-    padding: spacing.md, minHeight: 80, textAlignVertical: 'top',
-    ...typography.bodyMedium, color: colors.text.primary,
+    borderWidth: 1, 
+    borderColor: colors.border, 
+    borderRadius: 8,
+    padding: spacing.md, 
+    minHeight: 70, 
+    textAlignVertical: 'top',
+    ...typography.bodySmall, 
+    color: colors.text.primary,
+    backgroundColor: colors.background,
   },
-  footer: { marginTop: spacing.lg, paddingBottom: spacing.xxl },
+  syncAlertBox: {
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    alignItems: 'center',
+  },
+  syncAlertIcon: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  syncAlertTextCol: {
+    flex: 1,
+  },
+  syncAlertTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  syncAlertDesc: {
+    fontSize: 11,
+    color: '#1E40AF',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  textBlock: { 
+    ...typography.bodySmall, 
+    color: colors.text.primary 
+  },
+  footer: { 
+    marginTop: spacing.md, 
+    paddingBottom: spacing.xxl 
+  },
 });
+

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, StyleProp, TextStyle } from 'react-native';
 import { colors, typography, spacing } from '../../core/theme';
 
 interface PrimaryButtonProps {
@@ -7,21 +7,47 @@ interface PrimaryButtonProps {
   onPress: () => void;
   isLoading?: boolean;
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  variant?: 'primary' | 'danger' | 'success';
 }
 
 export const PrimaryButton: React.FC<PrimaryButtonProps> = ({ 
-  title, onPress, isLoading = false, disabled = false 
+  title, 
+  onPress, 
+  isLoading = false, 
+  disabled = false,
+  style,
+  textStyle,
+  variant = 'primary',
 }) => {
+  const getVariantBg = () => {
+    switch (variant) {
+      case 'danger':
+        return colors.status.error;
+      case 'success':
+        return colors.status.success;
+      default:
+        return colors.primary;
+    }
+  };
+
   return (
     <TouchableOpacity
-      style={[styles.button, (disabled || isLoading) && styles.disabled]}
+      style={[
+        styles.button,
+        { backgroundColor: getVariantBg() },
+        (disabled || isLoading) && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
       disabled={disabled || isLoading}
+      activeOpacity={0.8}
     >
       {isLoading ? (
-        <ActivityIndicator color={colors.text.inverse} />
+        <ActivityIndicator color={colors.text.inverse} size="small" />
       ) : (
-        <Text style={styles.text}>{title}</Text>
+        <Text style={[styles.text, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -29,20 +55,26 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
+    minHeight: 50,
+    paddingVertical: spacing.sm + 4,
     paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 2,
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.55,
+    elevation: 0,
   },
   text: {
     ...typography.bodyLarge,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.text.inverse,
+    letterSpacing: 0.3,
   },
 });

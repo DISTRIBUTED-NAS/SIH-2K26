@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../core/navigation/types';
 import { colors, typography, spacing } from '../../core/theme';
-import { ScreenWrapper, StatusBadge, PrimaryButton, AppCard } from '../../shared/components';
+import { ScreenWrapper, StatusBadge, PrimaryButton, AppCard, StepProgressIndicator } from '../../shared/components';
 import { inspectionService } from './services/inspectionService';
 import { repository } from '../../core/storage/database/InspectionLocalRepository';
 import { InspectionSummary } from './models/InspectionModels';
@@ -21,6 +21,7 @@ export const InspectionDetailsScreen = () => {
   const [inspection, setInspection] = useState<InspectionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -28,11 +29,11 @@ export const InspectionDetailsScreen = () => {
     try {
       const data = await inspectionService.getInspectionById(inspectionId);
       setInspection(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof AppError) {
         setError(err.userMessage);
       } else {
-        setError('An unexpected error occurred while loading inspection details.');
+        setError('Unable to load official inspection dossier.');
       }
     } finally {
       setIsLoading(false);
@@ -43,11 +44,24 @@ export const InspectionDetailsScreen = () => {
     loadData();
   }, [loadData]);
 
+  const handleStartInspection = async () => {
+    if (!inspection) return;
+    setIsStarting(true);
+    try {
+      await repository.startInspection(inspection);
+      navigation.navigate('InspectionChecklist', { inspectionId });
+    } catch (e) {
+      console.error('Failed to start inspection', e);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   if (error && !inspection) {
     return (
       <ScreenWrapper hasError={true} errorMessage={error}>
         <View style={styles.retryContainer}>
-          <PrimaryButton title="Retry" onPress={loadData} />
+          <PrimaryButton title="Retry Loading Details" onPress={loadData} />
         </View>
       </ScreenWrapper>
     );
@@ -56,147 +70,233 @@ export const InspectionDetailsScreen = () => {
   return (
     <ScreenWrapper isLoading={isLoading}>
       {inspection && (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Inspection Details</Text>
-            <StatusBadge status={inspection.status} />
-          </View>
-          
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Application</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Application ID:</Text>
-              <Text style={styles.value}>{inspection.applicationId}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Inspection ID:</Text>
-              <Text style={styles.value}>{inspection.id}</Text>
-            </View>
-          </AppCard>
+        <View style={styles.outerContainer}>
+          {/* Progress Indicator */}
+          <StepProgressIndicator currentStep="DETAILS" />
 
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Business / Customer</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Name:</Text>
-              <Text style={styles.value}>{inspection.businessName || 'N/A'}</Text>
+          <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+            {/* Header Status Card */}
+            <View style={styles.dossierBanner}>
+              <View style={styles.dossierBadge}>
+                <Text style={styles.dossierBadgeText}>OFFICIAL DOSSIER</Text>
+              </View>
+              <Text style={styles.applicationHeading}>Application #{inspection.applicationId}</Text>
+              <View style={styles.statusRow}>
+                <StatusBadge status={inspection.status} />
+                <Text style={styles.internalIdText}>ID: {inspection.id}</Text>
+              </View>
             </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Location:</Text>
-              <Text style={styles.value}>{inspection.location}</Text>
-            </View>
-          </AppCard>
 
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Instrument Info</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Type:</Text>
-              <Text style={styles.value}>{inspection.instrumentName}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Model:</Text>
-              <Text style={styles.value}>{inspection.instrumentModel || 'N/A'}</Text>
-            </View>
-          </AppCard>
-
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Scheduling</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Date:</Text>
-              <Text style={styles.value}>{inspection.scheduledDate}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Time:</Text>
-              <Text style={styles.value}>{inspection.scheduledTime}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Assigned Officer:</Text>
-              <Text style={styles.value}>{inspection.assignedOfficerId || 'Unassigned'}</Text>
-            </View>
-          </AppCard>
-
-          {inspection.notes && (
+            {/* Applicant & Business Details */}
             <AppCard style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Notes</Text>
-              <Text style={styles.notesText}>{inspection.notes}</Text>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.sectionTitle}>BUSINESS & APPLICANT</Text>
+                <Text style={styles.sectionTag}>Trader Profile</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Business Entity:</Text>
+                <Text style={styles.valueBold}>{inspection.businessName || 'N/A'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Establishment Site:</Text>
+                <Text style={styles.value}>{inspection.location}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Jurisdiction:</Text>
+                <Text style={styles.value}>Zone 4 • Legal Metrology Circle</Text>
+              </View>
             </AppCard>
-          )}
 
-          <View style={styles.actionContainer}>
+            {/* Instrument Specifications */}
+            <AppCard style={styles.sectionCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.sectionTitle}>INSTRUMENT SPECIFICATIONS</Text>
+                <Text style={styles.sectionTag}>Verification Target</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Category / Type:</Text>
+                <Text style={styles.valueBold}>⚖️  {inspection.instrumentName}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Model / Series:</Text>
+                <Text style={styles.value}>{inspection.instrumentModel || 'Standard Commercial'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Statutory Standard:</Text>
+                <Text style={styles.value}>Class III Commercial Stamping</Text>
+              </View>
+            </AppCard>
+
+            {/* Field Schedule & Assignment */}
+            <AppCard style={styles.sectionCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.sectionTitle}>SCHEDULE & FIELD OFFICER</Text>
+                <Text style={styles.sectionTag}>Roster Slot</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Scheduled Date:</Text>
+                <Text style={styles.valueBold}>🗓️  {inspection.scheduledDate}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Reporting Time:</Text>
+                <Text style={styles.valueBold}>🕒  {inspection.scheduledTime}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Assigned Officer:</Text>
+                <Text style={styles.value}>{inspection.assignedOfficerId || 'LMO Field Officer'}</Text>
+              </View>
+            </AppCard>
+
+            {/* Statutory Notes */}
+            {inspection.notes && (
+              <AppCard style={styles.sectionCard}>
+                <Text style={styles.sectionTitle}>OFFICER NOTES & STATUTORY INSTRUCTIONS</Text>
+                <Text style={styles.notesText}>{inspection.notes}</Text>
+              </AppCard>
+            )}
+          </ScrollView>
+
+          {/* Bottom Sticky Action Bar */}
+          <View style={styles.stickyFooter}>
             <PrimaryButton 
-              title="Start Inspection" 
-              onPress={async () => {
-                if (!inspection) return;
-                try {
-                  await repository.startInspection(inspection);
-                  navigation.navigate('InspectionChecklist', { inspectionId });
-                } catch (e) {
-                  console.error('Failed to start inspection', e);
-                }
-              }} 
+              title={isStarting ? "Initializing Stamping..." : "Start Field Inspection →"}
+              onPress={handleStartInspection} 
+              isLoading={isStarting}
             />
           </View>
-        </ScrollView>
+        </View>
       )}
     </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
   },
   content: {
-    padding: spacing.lg,
+    padding: spacing.md,
+    paddingBottom: 24,
   },
-  header: {
+  dossierBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dossierBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  dossierBadgeText: {
+    ...typography.badge,
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  applicationHeading: {
+    ...typography.h1,
+    color: colors.text.primary,
+    marginBottom: 8,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+  },
+  internalIdText: {
+    ...typography.caption,
+    color: colors.text.muted,
+  },
+  sectionCard: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  title: {
-    ...typography.h1,
-    color: colors.primary,
-  },
-  sectionCard: {
-    marginBottom: spacing.md,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    paddingBottom: 6,
   },
   sectionTitle: {
-    ...typography.h2,
-    color: colors.primary,
-    marginBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.xs,
+    ...typography.caption,
+    color: colors.text.secondary,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
-  row: {
+  sectionTag: {
+    ...typography.badge,
+    fontSize: 9,
+    color: colors.secondary,
+    backgroundColor: colors.secondaryLight,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  infoRow: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 5,
   },
   label: {
     ...typography.bodyMedium,
     color: colors.text.secondary,
-    width: 130,
+    width: '42%',
   },
   value: {
     ...typography.bodyMedium,
     color: colors.text.primary,
     flex: 1,
-    fontWeight: '500',
+    textAlign: 'right',
+  },
+  valueBold: {
+    ...typography.bodyMedium,
+    fontWeight: '700',
+    color: colors.text.primary,
+    flex: 1,
+    textAlign: 'right',
   },
   notesText: {
     ...typography.bodyMedium,
-    color: colors.text.primary,
-  },
-  subtitle: {
-    ...typography.bodyMedium,
     color: colors.text.secondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    lineHeight: 20,
+    backgroundColor: colors.surfaceVariant,
+    padding: spacing.sm + 2,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.secondary,
+    marginTop: 6,
   },
-  actionContainer: {
-    marginTop: spacing.xl,
-    paddingVertical: spacing.md,
+  stickyFooter: {
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   retryContainer: {
     padding: spacing.xl,
