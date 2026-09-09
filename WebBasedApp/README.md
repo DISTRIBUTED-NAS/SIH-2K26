@@ -27,40 +27,41 @@ The project follows a clean, modular architecture:
 
 ```
 SIH-2K26/
-├── assets/                    # Application icons, splash screens, and branding
-├── scripts/                   # Build and patching automation scripts
-│   └── patch-expo-notifications.js
-├── src/
-│   ├── core/                  # Core infrastructure layer
-│   │   ├── config/            # Environment & app configuration
-│   │   ├── constants/         # Storage keys, app constants & thresholds
-│   │   ├── errors/            # Custom AppError models & exception handlers
-│   │   ├── navigation/        # RootNavigator, AppTabNavigator, route types
-│   │   ├── network/           # Axios apiClient & useNetworkStatus hook
-│   │   ├── notifications/     # Notification service & models
-│   │   ├── storage/           # SQLite database layer & async storage
-│   │   └── theme/             # Material 3 palette, typography, spacing
-│   ├── features/              # Modular feature domains
-│   │   ├── ai-verification/   # AI forensic analysis & tamper inspection
-│   │   ├── auth/              # Officer authentication, context & session
-│   │   ├── camera/            # Evidence photo capture & inspection camera
-│   │   ├── dashboard/         # Officer command center & quick actions
-│   │   ├── history/           # Audit trails & past inspection records
-│   │   ├── inspections/       # Core inspection lifecycle & 5-step wizard
-│   │   ├── profile/           # Officer profile, sync controls & settings
-│   │   └── splash/            # Animated splash & system initialization
-│   └── shared/                # Cross-cutting components & data contracts
-│       ├── components/        # M3 AppCard, Buttons, Badges, Progress, etc.
-│       └── models/            # Shared domain types & data models
-├── .env.example               # Environment variables template
-├── .gitignore                 # Version control exclusions
-├── app.json                   # Expo application configuration
-├── App.tsx                    # Application entry point with DB & Auth providers
-├── index.ts                   # Root registration & error logging setup
-├── LICENSE                    # MIT License
-├── package.json               # Dependencies and scripts
-├── package-lock.json          # Deterministic dependency lockfile
-└── tsconfig.json              # TypeScript strict configuration
+└── WebBasedApp/
+    ├── assets/                    # Application icons, splash screens, and branding
+    ├── scripts/                   # Build and patching automation scripts
+    │   └── patch-expo-notifications.js
+    ├── src/
+    │   ├── core/                  # Core infrastructure layer
+    │   │   ├── config/            # Environment & app configuration
+    │   │   ├── constants/         # Storage keys, app constants & thresholds
+    │   │   ├── errors/            # Custom AppError models & exception handlers
+    │   │   ├── navigation/        # RootNavigator, AppTabNavigator, route types
+    │   │   ├── network/           # Axios apiClient & useNetworkStatus hook
+    │   │   ├── notifications/     # Notification service & models
+    │   │   ├── storage/           # SQLite database layer & async storage
+    │   │   └── theme/             # Material 3 palette, typography, spacing
+    │   ├── features/              # Modular feature domains
+    │   │   ├── ai-verification/   # AI forensic analysis & tamper inspection
+    │   │   ├── auth/              # Officer authentication, context & session
+    │   │   ├── camera/            # Evidence photo capture & inspection camera
+    │   │   ├── dashboard/         # Officer command center & quick actions
+    │   │   ├── history/           # Audit trails & past inspection records
+    │   │   ├── inspections/       # Core inspection lifecycle & 5-step wizard
+    │   │   ├── profile/           # Officer profile, sync controls & settings
+    │   │   └── splash/            # Animated splash & system initialization
+    │   └── shared/                # Cross-cutting components & data contracts
+    │       ├── components/        # M3 AppCard, Buttons, Badges, Progress, etc.
+    │       └── models/            # Shared domain types & data models
+    ├── .env.example               # Environment variables template
+    ├── .gitignore                 # Version control exclusions
+    ├── app.json                   # Expo application configuration
+    ├── App.tsx                    # Application entry point with DB & Auth providers
+    ├── index.ts                   # Root registration & error logging setup
+    ├── LICENSE                    # MIT License
+    ├── package.json               # Dependencies and scripts
+    ├── package-lock.json          # Deterministic dependency lockfile
+    └── tsconfig.json              # TypeScript strict configuration
 ```
 
 ---
@@ -94,7 +95,7 @@ SIH-2K26/
 1. Clone the repository:
    ```bash
    git clone https://github.com/Jaswanth776/SIH-2K26.git
-   cd SIH-2K26
+   cd SIH-2K26/WebBasedApp
    ```
 
 2. Install dependencies:
@@ -110,9 +111,10 @@ SIH-2K26/
 
 ### Running the Application
 
-Start the Expo development server with cache cleared:
+From within the `WebBasedApp` directory, start the Expo development server:
 
 ```bash
+cd WebBasedApp
 npx expo start -c
 ```
 
