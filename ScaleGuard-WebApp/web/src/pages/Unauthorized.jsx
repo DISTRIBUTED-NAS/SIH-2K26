@@ -11,6 +11,7 @@ export const Unauthorized = () => {
     if (!user) return '/login';
     if (user.role === 'BUSINESS_OWNER') return '/dashboard/business-owner';
     if (user.role === 'ADMIN') return '/dashboard/admin';
+    if (user.role === 'LMO_OFFICER') return '/dashboard/officer';
     return '/login';
   };
 
