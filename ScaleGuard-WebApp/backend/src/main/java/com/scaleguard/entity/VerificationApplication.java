@@ -26,7 +26,7 @@ public class VerificationApplication {
     private ApplicationType applicationType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 50)
     private ApplicationStatus status = ApplicationStatus.DRAFT;
 
     @Column(name = "purpose", nullable = false, length = 500)
