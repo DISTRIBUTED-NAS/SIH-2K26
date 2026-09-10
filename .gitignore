@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+**/target/
+**/*.class
+**/*.jar
+**/*.war
+**/dist/
+**/build/
+
+# Python cache
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/.pytest_cache/
+
+# Expo / Mobile artifacts
+.expo/
+**/.expo/
+android/app/build/
+android/.gradle/
+
+# IDE and OS files
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+**/.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

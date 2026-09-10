@@ -1,0 +1,195 @@
+{
+  "info": {
+    "_postman_id": "c4-scaleguard-verification-applications",
+    "name": "ScaleGuard - Component 4: Verification Applications",
+    "description": "Postman collection for Component 4: Verification Application Management in ScaleGuard.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "boToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "instrumentId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Business Owner - Create Draft Application",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{boToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"instrumentId\": {{instrumentId}},\n  \"applicationType\": \"INITIAL_VERIFICATION\",\n  \"purpose\": \"Initial statutory verification for commercial use in retail establishment.\",\n  \"requestedDate\": \"2026-09-09\",\n  \"preferredInspectionDate\": \"2026-09-16\",\n  \"remarks\": \"Please schedule inspection between 10:00 AM and 1:00 PM.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/verification-applications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "verification-applications"]
+        }
+      }
+    },
+    {
+      "name": "2. Business Owner - List My Applications",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{boToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/verification-applications?status=DRAFT",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "verification-applications"],
+          "query": [
+            {
+              "key": "status",
+              "value": "DRAFT"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "3. Business Owner - Get Application By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{boToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/verification-applications/{{applicationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "verification-applications", "{{applicationId}}"]
+        }
+      }
+    },
+    {
+      "name": "4. Business Owner - Update Draft Application",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{boToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"instrumentId\": {{instrumentId}},\n  \"applicationType\": \"PERIODIC_VERIFICATION\",\n  \"purpose\": \"Updated verification scope to annual periodic inspection.\",\n  \"requestedDate\": \"2026-09-09\",\n  \"preferredInspectionDate\": \"2026-09-20\",\n  \"remarks\": \"Updated contact: supervisor Rajesh.\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/verification-applications/{{applicationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "verification-applications", "{{applicationId}}"]
+        }
+      }
+    },
+    {
+      "name": "5. Business Owner - Submit Application",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{boToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/verification-applications/{{applicationId}}/submit",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "verification-applications", "{{applicationId}}", "submit"]
+        }
+      }
+    },
+    {
+      "name": "6. Business Owner - Delete Draft Application",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{boToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/verification-applications/{{applicationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "verification-applications", "{{applicationId}}"]
+        }
+      }
+    },
+    {
+      "name": "7. Admin - List All Verification Applications",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/verification-applications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "verification-applications"]
+        }
+      }
+    },
+    {
+      "name": "8. Admin - Inspect Application Details",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/verification-applications/{{applicationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "verification-applications", "{{applicationId}}"]
+        }
+      }
+    }
+  ]
+}

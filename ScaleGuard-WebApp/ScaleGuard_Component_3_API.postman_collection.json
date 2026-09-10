@@ -1,0 +1,575 @@
+{
+	"info": {
+		"_postman_id": "c3d4e5f6-789a-4bc0-bcde-0123456789ab",
+		"name": "ScaleGuard Component 3 - Instrument Management API",
+		"description": "Comprehensive Postman test collection for ScaleGuard Component 3: Instrument Lifecycle, Specifications, Search & Filters, and Admin Governance",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authentication (Prerequisite)",
+			"item": [
+				{
+					"name": "Login Business Owner",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.accessToken) {",
+									"    pm.environment.set(\"boToken\", jsonData.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"rajesh@business.in\",\n  \"password\": \"Password@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.accessToken) {",
+									"    pm.environment.set(\"adminToken\", jsonData.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@scaleguard.com\",\n  \"password\": \"Admin@123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Business Owner Instrument APIs",
+			"item": [
+				{
+					"name": "Create Instrument (POST /api/instruments)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.id) {",
+									"    pm.environment.set(\"instrumentId\", jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"instrumentName\": \"Digital Platform Scale 500kg\",\n  \"instrumentType\": \"DIGITAL_WEIGHING_SCALE\",\n  \"manufacturer\": \"Avery Weigh-Tronix\",\n  \"modelNumber\": \"ZK830-500\",\n  \"serialNumber\": \"SN-AVT-2024-001\",\n  \"capacity\": 500,\n  \"capacityUnit\": \"KG\",\n  \"accuracy\": 0.1,\n  \"accuracyUnit\": \"KG\",\n  \"manufacturingYear\": 2024,\n  \"purchaseDate\": \"2024-05-15\",\n  \"location\": \"Warehouse Bay 3\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get My Instruments (GET /api/instruments)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Search My Instruments (GET /api/instruments?search=...)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments?search=Avery",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "Avery"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Filter My Instruments by Status (ACTIVE)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments?status=ACTIVE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "ACTIVE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Instrument By ID (GET /api/instruments/:id)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments/{{instrumentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments",
+								"{{instrumentId}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Instrument (PUT /api/instruments/:id)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"instrumentName\": \"Digital Platform Scale 600kg (Upgraded)\",\n  \"instrumentType\": \"PLATFORM_SCALE\",\n  \"manufacturer\": \"Avery Weigh-Tronix\",\n  \"modelNumber\": \"ZK830-600\",\n  \"serialNumber\": \"SN-AVT-2024-001\",\n  \"capacity\": 600,\n  \"capacityUnit\": \"KG\",\n  \"accuracy\": 0.05,\n  \"accuracyUnit\": \"KG\",\n  \"manufacturingYear\": 2024,\n  \"purchaseDate\": \"2024-05-15\",\n  \"location\": \"Warehouse Bay 4 (Inspection Ready)\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments/{{instrumentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments",
+								"{{instrumentId}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Instrument (PATCH /api/instruments/:id/status)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"INACTIVE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments/{{instrumentId}}/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments",
+								"{{instrumentId}}",
+								"status"
+							]
+						}
+					}
+				},
+				{
+					"name": "Reactivate Instrument (PATCH /api/instruments/:id/status)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"ACTIVE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments/{{instrumentId}}/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments",
+								"{{instrumentId}}",
+								"status"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Admin Instrument Governance",
+			"item": [
+				{
+					"name": "Admin View All Instruments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Admin Filter Instruments by Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/instruments?status=ACTIVE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"instruments"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "ACTIVE"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Admin View Single Instrument Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/instruments/{{instrumentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"instruments",
+								"{{instrumentId}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Negative & Validation Tests",
+			"item": [
+				{
+					"name": "Duplicate Serial Number (Expect 409 Conflict)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"instrumentName\": \"Another Scale\",\n  \"instrumentType\": \"PLATFORM_SCALE\",\n  \"manufacturer\": \"Brand X\",\n  \"modelNumber\": \"BX-1\",\n  \"serialNumber\": \"SN-AVT-2024-001\",\n  \"capacity\": 100,\n  \"capacityUnit\": \"KG\",\n  \"accuracy\": 0.1,\n  \"accuracyUnit\": \"KG\",\n  \"manufacturingYear\": 2024,\n  \"location\": \"Bay 1\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Validation Error: Capacity <= 0 (Expect 400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"instrumentName\": \"Zero Capacity Scale\",\n  \"instrumentType\": \"DIGITAL_WEIGHING_SCALE\",\n  \"manufacturer\": \"Brand Y\",\n  \"modelNumber\": \"BY-1\",\n  \"serialNumber\": \"SN-INVALID-CAP\",\n  \"capacity\": 0,\n  \"capacityUnit\": \"KG\",\n  \"accuracy\": 0.1,\n  \"accuracyUnit\": \"KG\",\n  \"manufacturingYear\": 2024,\n  \"location\": \"Bay 1\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "RBAC: BO Accessing Admin Instruments (Expect 403)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{boToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "RBAC: Admin Creating Instrument (Expect 403)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"instrumentName\": \"Admin Scale Attempt\",\n  \"instrumentType\": \"DIGITAL_WEIGHING_SCALE\",\n  \"manufacturer\": \"Admin Brand\",\n  \"modelNumber\": \"ADM-1\",\n  \"serialNumber\": \"SN-ADM-001\",\n  \"capacity\": 100,\n  \"capacityUnit\": \"KG\",\n  \"accuracy\": 0.1,\n  \"accuracyUnit\": \"KG\",\n  \"manufacturingYear\": 2024,\n  \"location\": \"Admin Office\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							]
+						}
+					}
+				},
+				{
+					"name": "Unauthenticated Request (Expect 401)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/instruments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"instruments"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "boToken",
+			"value": ""
+		},
+		{
+			"key": "adminToken",
+			"value": ""
+		},
+		{
+			"key": "instrumentId",
+			"value": "1"
+		}
+	]
+}

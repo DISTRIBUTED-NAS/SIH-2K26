@@ -1,0 +1,303 @@
+{
+  "info": {
+    "_postman_id": "c5-scaleguard-officer-management",
+    "name": "ScaleGuard - Component 5: Officer Management & Assignment",
+    "description": "Postman collection for Component 5: Officer Management & Assignment in ScaleGuard.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "officerId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Admin - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@scaleguard.com\",\n  \"password\": \"Admin@123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "2. Admin - Provision New Officer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Inspector Rajesh Patel\",\n  \"email\": \"rajesh.patel@gujarat.gov.in\",\n  \"password\": \"Officer@123\",\n  \"officerCode\": \"LMO-GUJ-AHM-01\",\n  \"designation\": \"Inspector of Legal Metrology\",\n  \"department\": \"Legal Metrology Department\",\n  \"district\": \"Ahmedabad\",\n  \"phoneNumber\": \"+91-9876543210\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/officers",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "officers"]
+        }
+      }
+    },
+    {
+      "name": "3. Admin - List Officers (Search & Filter)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/officers?search=Rajesh&status=ACTIVE&district=Ahmedabad",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "officers"],
+          "query": [
+            {
+              "key": "search",
+              "value": "Rajesh"
+            },
+            {
+              "key": "status",
+              "value": "ACTIVE"
+            },
+            {
+              "key": "district",
+              "value": "Ahmedabad"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. Admin - Get Officer By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/officers/{{officerId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "officers", "{{officerId}}"]
+        }
+      }
+    },
+    {
+      "name": "5. Admin - Update Officer Details",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Inspector Rajesh K. Patel\",\n  \"designation\": \"Senior Inspector & Head\",\n  \"department\": \"Legal Metrology Department\",\n  \"district\": \"Ahmedabad Urban\",\n  \"phoneNumber\": \"+91-9876599999\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/officers/{{officerId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "officers", "{{officerId}}"]
+        }
+      }
+    },
+    {
+      "name": "6. Admin - Update Officer Status",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"INACTIVE\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/officers/{{officerId}}/status",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "officers", "{{officerId}}", "status"]
+        }
+      }
+    },
+    {
+      "name": "7. Admin - Assign Officer to Application",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"officerId\": {{officerId}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/verification-applications/{{applicationId}}/assign-officer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "verification-applications", "{{applicationId}}", "assign-officer"]
+        }
+      }
+    },
+    {
+      "name": "8. Admin - Reassign Officer",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"officerId\": {{officerId}}\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/admin/verification-applications/{{applicationId}}/assign-officer",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "admin", "verification-applications", "{{applicationId}}", "assign-officer"]
+        }
+      }
+    },
+    {
+      "name": "9. Officer - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"officer@scaleguard.com\",\n  \"password\": \"Officer@123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "10. Officer - Get Self Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{officerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/officer/profile",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "officer", "profile"]
+        }
+      }
+    },
+    {
+      "name": "11. Officer - Get Assigned Applications",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{officerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/officer/verification-applications",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "officer", "verification-applications"]
+        }
+      }
+    },
+    {
+      "name": "12. Officer - Get Assigned Application Details",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{officerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/officer/verification-applications/{{applicationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "officer", "verification-applications", "{{applicationId}}"]
+        }
+      }
+    }
+  ]
+}
