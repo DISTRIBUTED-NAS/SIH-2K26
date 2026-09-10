@@ -7,6 +7,7 @@
 > - **Component 4**: Verification Application Management & Docket Lifecycle
 > - **Component 5**: Officer Management & Assignment
 > - **Component 6**: Inspection Management & Field Verification Lifecycle
+> - **Component 7**: Measurement Testing & Tolerance Verification Module
 
 ScaleGuard is a digital platform designed for government and commercial stakeholders to govern and streamline the verification and certification lifecycle of weighing and measuring instruments in compliance with Legal Metrology standards.
 
@@ -71,7 +72,17 @@ ScaleGuard is a digital platform designed for government and commercial stakehol
 - **Mandatory Cancellation Audit**: Cancelling a scheduled inspection requires a validated justification reason.
 - **Statewide Inspection Monitoring**: Admins monitor and filter all statewide inspections by status, officer, district, and date ranges.
 
-> **Strict Scope Notice**: Subsequent components (Measurement Testing & Tolerance Verification, Photo Evidence & Geo-tagging, Digital Certificates & Seal Affixation, QR Verification, and Officer Mobile App) are scheduled for future development phases.
+### Component 7: Measurement Testing & Tolerance Module
+- **Inspection-to-Test-Session Binding**: Exactly one `MeasurementTestSession` per `Inspection` (`inspection_id UNIQUE NOT NULL`).
+- **Sub-Milligram Precision Engine**: All calculations executed using `BigDecimal(19, 6)` arithmetic:
+  $$\text{Error} = \text{Observed Value} - \text{Standard Value}$$
+  $$\text{Percentage Error} = \left(\frac{\text{Error}}{\text{Standard Value}}\right) \times 100$$
+- **Test Session Lifecycle**: `NOT_STARTED` → `IN_PROGRESS` → `COMPLETED`. Records can only be added, edited, or deleted while the session is `IN_PROGRESS`.
+- **Dynamic Field Recalibration**: Updating observed or standard weights triggers immediate backend recalculation of absolute and percentage error metrics.
+- **Officer Field Remarks**: Officers annotate overall calibration observations, environmental factors, or test weights used.
+- **Admin Read-Only Auditing**: Full administrative inspection of all calibration records, maximum recorded deviation, and average percentage error.
+
+> **Strict Scope Notice**: Subsequent components (Photo Evidence & Geo-tagging, Digital Certificates & Seal Affixation, QR Verification) are scheduled for future development phases.
 
 ---
 
